@@ -18,7 +18,7 @@ header{background:linear-gradient(135deg,var(--dark),#2b2b2b);color:#fff;padding
 nav{display:flex;gap:8px;padding:10px;position:sticky;top:80px;z-index:19;background:#fff;border-bottom:1px solid var(--border);overflow:auto}nav button{border:0;background:#f0f1f3;padding:10px 14px;border-radius:10px;font-weight:700;white-space:nowrap}nav button.active{background:var(--red);color:#fff}
 main{padding:14px;max-width:1250px;margin:auto}.view{display:none}.view.active{display:block}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px #0000000b}.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:12px;color:var(--muted);font-weight:700}input,select,textarea,button{font:inherit}input,select,textarea{border:1px solid var(--border);background:#fff;border-radius:9px;padding:9px}.btn{border:0;border-radius:9px;padding:10px 13px;background:var(--red);color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#eceff3;color:var(--text)}.btn.dark{background:#252525}.btn.danger{background:var(--danger)}
 .grid{display:grid;gap:10px}.stats{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}.stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}.stat .n{font-size:24px;font-weight:800;color:var(--red)}table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}th{background:#f1f2f4;position:sticky;top:0}.scroll{overflow:auto;max-width:100%}
-.player-row{display:grid;grid-template-columns:145px repeat(6,minmax(105px,1fr));gap:8px;align-items:end;border-top:1px solid #eef0f3;padding:10px 0}.player-row:first-child{border-top:0}.player-name{font-weight:800;padding-bottom:10px}.match-row{display:grid;grid-template-columns:135px 115px 105px 140px 80px 80px 80px 80px 80px 80px 80px 90px 95px 95px 130px 95px 95px 130px 180px;gap:7px;align-items:end;padding:9px 0;border-top:1px solid #eef0f3;min-width:1880px}.match-row.header{font-size:11px;color:var(--muted);font-weight:800}.small{font-size:12px;color:var(--muted)}.notice{background:#fff7f7;border-left:4px solid var(--red);padding:10px 12px;border-radius:8px;margin-bottom:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.status{font-size:12px;margin-top:8px;color:var(--muted)}
+.player-row{display:grid;grid-template-columns:145px repeat(6,minmax(105px,1fr));gap:8px;align-items:end;border-top:1px solid #eef0f3;padding:10px 0}.player-row:first-child{border-top:0}.player-name{font-weight:800;padding-bottom:10px}.match-row{display:grid;grid-template-columns:135px 115px 105px 140px 80px 80px 80px 80px 80px 80px 80px 90px 95px 95px 130px 95px 95px 130px 180px;gap:7px;align-items:end;padding:9px 0;border-top:1px solid #eef0f3;min-width:1880px}.match-row.header{font-size:11px;color:var(--muted);font-weight:800}.small{font-size:12px;color:var(--muted)}.notice{background:#fff7f7;border-left:4px solid var(--red);padding:10px 12px;border-radius:8px;margin-bottom:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.status{font-size:12px;margin-top:8px;color:var(--muted)}.filterbar{display:flex;gap:9px;flex-wrap:wrap;align-items:end;margin-top:10px;padding:10px;background:#fafafa;border:1px solid var(--border);border-radius:10px}.filterbar .field{min-width:150px}
 @media(max-width:850px){header{position:static}nav{top:0}.player-row{grid-template-columns:1fr 1fr}.player-name{grid-column:1/-1}.toolbar{align-items:stretch}.field{min-width:135px}.brand img{width:46px;height:46px}}
 </style>
 </head>
@@ -33,8 +33,62 @@ main{padding:14px;max-width:1250px;margin:auto}.view{display:none}.view.active{d
 </nav>
 <main>
 <section id="dashboard" class="view active"><div id="stats" class="grid stats"></div><div class="card"><h3>Spelersoverzicht</h3><div class="scroll"><table id="summaryTable"></table></div></div></section>
-<section id="training" class="view"><div class="toolbar"><div class="field"><label>Datum</label><input type="date" id="trainingDate"></div><button class="btn" id="loadTraining">Training openen</button><button class="btn secondary" id="saveTraining">Opslaan + synchroniseren</button><span class="status" id="trainingSyncStatus"></span></div><div class="card"><h3>Aanwezigheid per trainingsdatum</h3><div class="scroll"><table id="trainingDateAttendance"></table></div></div><div class="card"><h3>Trainingsoverzicht per speler</h3><div class="scroll"><table id="trainingPivot"></table></div></div><div id="trainingList" class="card"></div></section>
-<section id="matches" class="view"><div class="toolbar"><div class="field"><label>Wedstrijddatum</label><input type="date" id="matchDate"></div><button class="btn" id="loadMatch">Wedstrijd openen</button><button class="btn secondary" id="saveMatch">Opslaan + synchroniseren</button><span class="status" id="matchSyncStatus"></span></div><div class="card"><h3>Aanwezigheid per wedstrijddatum</h3><div class="scroll"><table id="matchDateAttendance"></table></div></div><div class="card"><h3>Wedstrijdoverzicht per speler</h3><div class="scroll"><table id="matchPivot"></table></div></div><div class="card scroll"><div id="matchList"></div></div></section>
+<section id="training" class="view">
+      <div class="toolbar">
+        <div class="field"><label>Datum</label><input type="date" id="trainingDate"></div>
+        <button class="btn" id="loadTraining">Training openen</button>
+        <button class="btn secondary" id="saveTraining">Opslaan + synchroniseren</button>
+        <span class="status" id="trainingSyncStatus"></span>
+      </div>
+      <div class="filterbar">
+        <div class="field"><label>Filter speler</label><input type="search" id="trainingPlayerFilter" placeholder="Typ naam"></div>
+        <div class="field"><label>Aanwezigheid</label>
+          <select id="trainingAttendanceFilter">
+            <option value="">Alle</option>
+            <option>Aanwezig</option><option>Afwezig</option><option>Geblesseerd</option><option>Afgemeld</option>
+            <option value="__EMPTY__">Niet ingevuld</option>
+          </select>
+        </div>
+        <button class="btn secondary" id="clearTrainingFilters" type="button">Filters wissen</button>
+      </div>
+      <div class="card"><h3>Aanwezigheid per trainingsdatum</h3><div class="scroll"><table id="trainingDateAttendance"></table></div></div>
+      <div class="card"><h3>Trainingsoverzicht per speler</h3><div class="scroll"><table id="trainingPivot"></table></div></div>
+      <div id="trainingList" class="card"></div>
+    </section>
+<section id="matches" class="view">
+      <div class="toolbar">
+        <div class="field"><label>Wedstrijddatum</label><input type="date" id="matchDate"></div>
+        <div class="field"><label>Tegenstander</label><input type="text" id="opponentName" placeholder="Naam tegenstander"></div>
+        <button class="btn" id="loadMatch">Wedstrijd openen</button>
+        <button class="btn secondary" id="saveMatch">Opslaan + synchroniseren</button>
+        <span class="status" id="matchSyncStatus"></span>
+      </div>
+      <div class="filterbar">
+        <div class="field"><label>Filter speler</label><input type="search" id="matchPlayerFilter" placeholder="Typ naam"></div>
+        <div class="field"><label>Aanwezigheid</label>
+          <select id="matchAttendanceFilter">
+            <option value="">Alle</option>
+            <option>Aanwezig</option><option>Afwezig</option><option>Geblesseerd</option><option>Afgemeld</option>
+            <option value="__EMPTY__">Niet ingevuld</option>
+          </select>
+        </div>
+        <div class="field"><label>Rol</label>
+          <select id="matchRoleFilter"><option value="">Alle</option><option>Basis</option><option>Bank</option><option value="__EMPTY__">Niet ingevuld</option></select>
+        </div>
+        <div class="field"><label>Positie</label>
+          <select id="matchPositionFilter">
+            <option value="">Alle</option>
+            <option>Centrale VD</option><option>L achter</option><option>R achter</option><option>Keeper</option>
+            <option>L midden</option><option>R midden</option><option>Centrale MV</option><option>Spits</option>
+            <option value="__EMPTY__">Niet ingevuld</option>
+          </select>
+        </div>
+        <button class="btn secondary" id="clearMatchFilters" type="button">Filters wissen</button>
+      </div>
+      <div class="card"><h3>Aanwezigheid per wedstrijddatum</h3><div class="scroll"><table id="matchDateAttendance"></table></div></div>
+      <div class="card"><h3>Wedstrijdoverzicht per speler</h3><div class="scroll"><table id="matchPivot"></table></div></div>
+      <div class="card scroll"><div id="matchList"></div></div>
+    </section>
 <section id="players" class="view"><div class="card"><div class="toolbar"><div class="field"><label>Nieuwe speler</label><input id="newPlayer" placeholder="Naam"></div><button class="btn" id="addPlayer">Toevoegen</button></div><div class="scroll"><table id="playerTable"></table></div></div></section>
 <section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen en wedstrijden lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
@@ -61,8 +115,10 @@ const AUTH_TOKEN_KEY='vdz_auth_token', AUTH_EXPIRY_KEY='vdz_auth_expiry';
 const defaultPlayers=["Rayan","Sander","Jelle","Niels","Mick","Teun","Sam","Flyn","Daan","Jayven","Tom","Kai","Skye","Lucas","Lasse","Kalle","Jullius","Abraham","Bamba"];
 const positions=["Centrale VD","L achter","R achter","Keeper","L midden","R midden","Centrale MV","Spits"];
 const attendance=["","Aanwezig","Afwezig","Geblesseerd","Afgemeld"],roles=["","Basis","Bank"];
-const state={players:JSON.parse(localStorage.getItem('tt_players')||'null')||defaultPlayers,training:JSON.parse(localStorage.getItem('tt_training')||'{}'),matches:JSON.parse(localStorage.getItem('tt_matches')||'{}')};
+const state={players:JSON.parse(localStorage.getItem('tt_players')||'null')||defaultPlayers,training:JSON.parse(localStorage.getItem('tt_training')||'{}'),matches:JSON.parse(localStorage.getItem('tt_matches')||'{}'),matchMeta:JSON.parse(localStorage.getItem('tt_match_meta')||'{}')};
 if(state.players.includes('Ryan')&&!state.players.includes('Rayan')) state.players[state.players.indexOf('Ryan')]='Rayan';
+const sortNames=arr=>[...new Set(arr)].sort((a,b)=>String(a).localeCompare(String(b),'nl',{sensitivity:'base'}));
+state.players=sortNames(state.players);
 const $=id=>document.getElementById(id), avg=arr=>{const n=arr.map(Number).filter(x=>x>0);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(1):''},esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const opt=(arr,val)=>arr.map(x=>`<option ${String(x)===String(val)?'selected':''}>${x}</option>`).join(''),scoreOpt=v=>opt(['',1,2,3,4,5],v);const today=()=>new Date().toISOString().slice(0,10);$('trainingDate').value=today();$('matchDate').value=today();
 const meaningfulTraining=r=>r&&(r.attendance||r.effort||r.technique||r.insight||r.notes);
@@ -96,14 +152,38 @@ function jsonpRequest(params,timeoutMs=12000){
   });
 }
 function mergeCentralData(data){
-  if(data.training&&typeof data.training==='object') state.training=data.training;
-  if(data.matches&&typeof data.matches==='object') state.matches=data.matches;
+  // Google Sheets is leidend: verwijder eerst ALLE lokale training- en wedstrijddata.
+  state.training={};
+  state.matches={};
+  state.matchMeta={};
+  localStorage.removeItem('tt_training');
+  localStorage.removeItem('tt_matches');
+  localStorage.removeItem('tt_match_meta');
+
+  // Laad daarna uitsluitend de data die nu werkelijk in Google Sheets staat.
+  if(data && data.training && typeof data.training==='object') {
+    state.training=data.training;
+  }
+  if(data && data.matches && typeof data.matches==='object') {
+    state.matches=data.matches;
+  }
+  if(data && data.matchMeta && typeof data.matchMeta==='object') {
+    state.matchMeta=data.matchMeta;
+  }
+
+  // Spelerslijst blijft behouden; eventuele nieuwe centrale spelers worden toegevoegd.
   if(Array.isArray(data.players)&&data.players.length){
     const merged=[...state.players];
     data.players.forEach(p=>{if(p&&!merged.includes(p))merged.push(p)});
-    state.players=merged;
+    state.players=sortNames(merged);
+  } else {
+    state.players=sortNames(state.players);
   }
-  save();renderPlayers();renderTraining();renderMatch();
+
+  save();
+  renderPlayers();
+  renderTraining();
+  renderMatch();
 }
 async function refreshFromSheets(showStatus=true){
   const status=$('dataStatus');
@@ -127,20 +207,52 @@ async function refreshFromSheets(showStatus=true){
   }
 }
 function trainingPayload(date,day){return {type:'training',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',notes:r.notes||''}})}}
-function matchPayload(date,day){return {type:'match',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',role:r.role||'',position:r.position||'',minutes:r.minutes||'',goals:r.goals||0,yellow:r.yellow||0,red:r.red||0,effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',sub1Time:r.sub1time||'',sub1Type:r.sub1type||'',sub1Person:r.sub1for||'',sub2Time:r.sub2time||'',sub2Type:r.sub2type||'',sub2Person:r.sub2for||'',notes:r.notes||''}})}}
+function matchPayload(date,day){return {type:'match',opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',role:r.role||'',position:r.position||'',minutes:r.minutes||'',goals:r.goals||0,yellow:r.yellow||0,red:r.red||0,effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',sub1Time:r.sub1time||'',sub1Type:r.sub1type||'',sub1Person:r.sub1for||'',sub2Time:r.sub2time||'',sub2Type:r.sub2type||'',sub2Person:r.sub2for||'',notes:r.notes||''}})}}
 
-function save(){localStorage.setItem('tt_players',JSON.stringify(state.players));localStorage.setItem('tt_training',JSON.stringify(state.training));localStorage.setItem('tt_matches',JSON.stringify(state.matches));renderTrainingDateAttendance();renderMatchDateAttendance();renderDashboard();renderTrainingPivot();renderMatchPivot()}
+function save(){localStorage.setItem('tt_players',JSON.stringify(state.players));localStorage.setItem('tt_training',JSON.stringify(state.training));localStorage.setItem('tt_matches',JSON.stringify(state.matches));localStorage.setItem('tt_match_meta',JSON.stringify(state.matchMeta));renderTrainingDateAttendance();renderMatchDateAttendance();renderDashboard();renderTrainingPivot();renderMatchPivot()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.view).classList.add('active');});
 function getTraining(date){if(!state.training[date])state.training[date]={};state.players.forEach(p=>state.training[date][p]??={attendance:'',effort:'',technique:'',insight:'',notes:''});return state.training[date]}
-function renderTraining(){const d=getTraining($('trainingDate').value);$('trainingList').innerHTML=state.players.map(p=>{const r=d[p];return `<div class="player-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><div class="field"><label>Aanwezigheid</label><select data-k="attendance">${opt(attendance,r.attendance)}</select></div><div class="field"><label>Inzet</label><select data-k="effort">${scoreOpt(r.effort)}</select></div><div class="field"><label>Techniek</label><select data-k="technique">${scoreOpt(r.technique)}</select></div><div class="field"><label>Inzicht</label><select data-k="insight">${scoreOpt(r.insight)}</select></div><div class="field"><label>Gem.</label><input disabled value="${avg([r.effort,r.technique,r.insight])}"></div><div class="field"><label>Notities</label><input data-k="notes" value="${esc(r.notes)}"></div></div>`}).join('')}
+function filterEmpty(value,filter){return filter==='__EMPTY__'?!value:(filter?value===filter:true)}
+function renderTraining(){
+  const d=getTraining($('trainingDate').value);
+  const nameFilter=($('trainingPlayerFilter').value||'').trim().toLowerCase();
+  const attFilter=$('trainingAttendanceFilter').value;
+  const players=sortNames(state.players).filter(p=>{
+    const r=d[p]||{};
+    return (!nameFilter || p.toLowerCase().includes(nameFilter)) && filterEmpty(r.attendance,attFilter);
+  });
+  $('trainingList').innerHTML=players.length?players.map(p=>{
+    const r=d[p];
+    return `<div class="player-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><div class="field"><label>Aanwezigheid</label><select data-k="attendance">${opt(attendance,r.attendance)}</select></div><div class="field"><label>Inzet</label><select data-k="effort">${scoreOpt(r.effort)}</select></div><div class="field"><label>Techniek</label><select data-k="technique">${scoreOpt(r.technique)}</select></div><div class="field"><label>Inzicht</label><select data-k="insight">${scoreOpt(r.insight)}</select></div><div class="field"><label>Gem.</label><input disabled value="${avg([r.effort,r.technique,r.insight])}"></div><div class="field"><label>Notities</label><input data-k="notes" value="${esc(r.notes)}"></div></div>`;
+  }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>';
+}
 async function collectTraining(){const date=$('trainingDate').value,d=getTraining(date);document.querySelectorAll('#trainingList .player-row').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderTraining();await postSync(trainingPayload(date,d),'trainingSyncStatus')}
 $('loadTraining').onclick=renderTraining;$('saveTraining').onclick=collectTraining;
 function getMatch(date){if(!state.matches[date])state.matches[date]={};state.players.forEach(p=>state.matches[date][p]??={attendance:'',role:'',position:'',minutes:'',goals:0,yellow:0,red:0,effort:'',technique:'',insight:'',sub1time:'',sub1type:'',sub1for:'',sub2time:'',sub2type:'',sub2for:'',notes:''});return state.matches[date]}
-function renderMatch(){const d=getMatch($('matchDate').value);$('matchList').innerHTML=`<div class="match-row header"><div>Speler</div><div>Aanwezigheid</div><div>Rol</div><div>Positie</div><div>Min</div><div>Goals</div><div>Geel</div><div>Rood</div><div>Inzet</div><div>Techniek</div><div>Inzicht</div><div>Gem.</div><div>Wissel 1 tijd</div><div>In/Uit</div><div>Voor/door wie</div><div>Wissel 2 tijd</div><div>In/Uit</div><div>Voor/door wie</div><div>Notities</div></div>`+state.players.map(p=>{const r=d[p];return `<div class="match-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><select data-k="attendance">${opt(attendance,r.attendance)}</select><select data-k="role">${opt(roles,r.role)}</select><select data-k="position">${opt(['',...positions],r.position)}</select><input data-k="minutes" type="number" min="0" value="${r.minutes}"><input data-k="goals" type="number" min="0" value="${r.goals}"><input data-k="yellow" type="number" min="0" value="${r.yellow}"><input data-k="red" type="number" min="0" value="${r.red}"><select data-k="effort">${scoreOpt(r.effort)}</select><select data-k="technique">${scoreOpt(r.technique)}</select><select data-k="insight">${scoreOpt(r.insight)}</select><input disabled value="${avg([r.effort,r.technique,r.insight])}"><input data-k="sub1time" placeholder="min" value="${esc(r.sub1time)}"><select data-k="sub1type">${opt(['','In','Uit'],r.sub1type)}</select><input data-k="sub1for" value="${esc(r.sub1for)}"><input data-k="sub2time" placeholder="min" value="${esc(r.sub2time)}"><select data-k="sub2type">${opt(['','In','Uit'],r.sub2type)}</select><input data-k="sub2for" value="${esc(r.sub2for)}"><input data-k="notes" value="${esc(r.notes)}"></div>`}).join('')}
-async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderMatch();await postSync(matchPayload(date,d),'matchSyncStatus')}
+function renderMatch(){
+  const date=$('matchDate').value,d=getMatch(date);
+  $('opponentName').value=(state.matchMeta[date]&&state.matchMeta[date].opponent)||'';
+  const nameFilter=($('matchPlayerFilter').value||'').trim().toLowerCase();
+  const attFilter=$('matchAttendanceFilter').value;
+  const roleFilter=$('matchRoleFilter').value;
+  const posFilter=$('matchPositionFilter').value;
+  const players=sortNames(state.players).filter(p=>{
+    const r=d[p]||{};
+    return (!nameFilter || p.toLowerCase().includes(nameFilter))
+      && filterEmpty(r.attendance,attFilter)
+      && filterEmpty(r.role,roleFilter)
+      && filterEmpty(r.position,posFilter);
+  });
+  const header=`<div class="match-row header"><div>Speler</div><div>Aanwezigheid</div><div>Rol</div><div>Positie</div><div>Min</div><div>Goals</div><div>Geel</div><div>Rood</div><div>Inzet</div><div>Techniek</div><div>Inzicht</div><div>Gem.</div><div>Wissel 1 tijd</div><div>In/Uit</div><div>Voor/door wie</div><div>Wissel 2 tijd</div><div>In/Uit</div><div>Voor/door wie</div><div>Notities</div></div>`;
+  $('matchList').innerHTML=header+(players.length?players.map(p=>{
+    const r=d[p];
+    return `<div class="match-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><select data-k="attendance">${opt(attendance,r.attendance)}</select><select data-k="role">${opt(roles,r.role)}</select><select data-k="position">${opt(['',...positions],r.position)}</select><input data-k="minutes" type="number" min="0" value="${r.minutes}"><input data-k="goals" type="number" min="0" value="${r.goals}"><input data-k="yellow" type="number" min="0" value="${r.yellow}"><input data-k="red" type="number" min="0" value="${r.red}"><select data-k="effort">${scoreOpt(r.effort)}</select><select data-k="technique">${scoreOpt(r.technique)}</select><select data-k="insight">${scoreOpt(r.insight)}</select><input disabled value="${avg([r.effort,r.technique,r.insight])}"><input data-k="sub1time" placeholder="min" value="${esc(r.sub1time)}"><select data-k="sub1type">${opt(['','In','Uit'],r.sub1type)}</select><input data-k="sub1for" value="${esc(r.sub1for)}"><input data-k="sub2time" placeholder="min" value="${esc(r.sub2time)}"><select data-k="sub2type">${opt(['','In','Uit'],r.sub2type)}</select><input data-k="sub2for" value="${esc(r.sub2for)}"><input data-k="notes" value="${esc(r.notes)}"></div>`;
+  }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>');
+}
+async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);state.matchMeta[date]={opponent:$('opponentName').value.trim()};document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderMatch();await postSync(matchPayload(date,d),'matchSyncStatus')}
 $('loadMatch').onclick=renderMatch;$('saveMatch').onclick=collectMatch;
-function renderPlayers(){$('playerTable').innerHTML='<tr><th>Naam</th><th></th></tr>'+state.players.map((p,i)=>`<tr><td>${esc(p)}</td><td><button class="btn danger" onclick="removePlayer(${i})">Verwijder</button></td></tr>`).join('')}
-window.removePlayer=i=>{if(confirm('Speler verwijderen?')){state.players.splice(i,1);save();renderPlayers();renderTraining();renderMatch()}};$('addPlayer').onclick=()=>{const n=$('newPlayer').value.trim();if(n&&!state.players.includes(n)){state.players.push(n);$('newPlayer').value='';save();renderPlayers();renderTraining();renderMatch()}};
+function renderPlayers(){state.players=sortNames(state.players);$('playerTable').innerHTML='<tr><th>Naam</th><th></th></tr>'+state.players.map((p,i)=>`<tr><td>${esc(p)}</td><td><button class="btn danger" onclick="removePlayer(${i})">Verwijder</button></td></tr>`).join('')}
+window.removePlayer=i=>{if(confirm('Speler verwijderen?')){state.players.splice(i,1);save();renderPlayers();renderTraining();renderMatch()}};$('addPlayer').onclick=()=>{const n=$('newPlayer').value.trim();if(n&&!state.players.includes(n)){state.players=sortNames([...state.players,n]);$('newPlayer').value='';save();renderPlayers();renderTraining();renderMatch()}};
 function fmtDate(d){if(!d)return '';const p=String(d).slice(0,10).split('-');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:d}
 function renderTrainingDateAttendance(){
   const rows=[];
@@ -156,9 +268,9 @@ function renderMatchDateAttendance(){
   Object.entries(state.matches).sort(([a],[b])=>a.localeCompare(b)).forEach(([date,day])=>{
     let present=0,absent=0,injured=0,excused=0,total=0;
     state.players.forEach(p=>{const r=day[p];if(!meaningfulMatch(r)||!r.attendance)return;total++;if(r.attendance==='Aanwezig')present++;else if(r.attendance==='Afwezig')absent++;else if(r.attendance==='Geblesseerd')injured++;else if(r.attendance==='Afgemeld')excused++;});
-    if(total)rows.push({date,present,absent,injured,excused,total});
+    if(total)rows.push({date,opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',present,absent,injured,excused,total});
   });
-  $('matchDateAttendance').innerHTML='<tr><th>Datum</th><th>Aanwezig</th><th>Afwezig</th><th>Geblesseerd</th><th>Afgemeld</th><th>Totaal ingevuld</th><th>Aanwezig %</th></tr>'+(rows.length?rows.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${x.present}</td><td>${x.absent}</td><td>${x.injured}</td><td>${x.excused}</td><td>${x.total}</td><td>${x.total?Math.round(x.present/x.total*100):0}%</td></tr>`).join(''):'<tr><td colspan="7">Nog geen aanwezigheid vastgelegd.</td></tr>');
+  $('matchDateAttendance').innerHTML='<tr><th>Datum</th><th>Tegenstander</th><th>Aanwezig</th><th>Afwezig</th><th>Geblesseerd</th><th>Afgemeld</th><th>Totaal ingevuld</th><th>Aanwezig %</th></tr>'+(rows.length?rows.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(x.opponent)}</td><td>${x.present}</td><td>${x.absent}</td><td>${x.injured}</td><td>${x.excused}</td><td>${x.total}</td><td>${x.total?Math.round(x.present/x.total*100):0}%</td></tr>`).join(''):'<tr><td colspan="8">Nog geen aanwezigheid vastgelegd.</td></tr>');
 }
 function renderTrainingPivot(){const rows=state.players.map(p=>{let sessions=0,present=0,absent=0,injured=0,excused=0,eff=[],tech=[],ins=[];Object.values(state.training).forEach(day=>{const r=day[p];if(!meaningfulTraining(r))return;sessions++;if(r.attendance==='Aanwezig')present++;else if(r.attendance==='Afwezig')absent++;else if(r.attendance==='Geblesseerd')injured++;else if(r.attendance==='Afgemeld')excused++;if(Number(r.effort))eff.push(+r.effort);if(Number(r.technique))tech.push(+r.technique);if(Number(r.insight))ins.push(+r.insight)});return{p,sessions,present,absent,injured,excused,eff:avg(eff),tech:avg(tech),ins:avg(ins),overall:avg([...eff,...tech,...ins])}});$('trainingPivot').innerHTML='<tr><th>Speler</th><th>Aanwezig</th><th>Afwezig</th><th>Geblesseerd</th><th>Afgemeld</th><th>Aanwezig %</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Gem.</th></tr>'+rows.map(x=>`<tr><td>${esc(x.p)}</td><td>${x.present}</td><td>${x.absent}</td><td>${x.injured}</td><td>${x.excused}</td><td>${x.sessions?Math.round(x.present/x.sessions*100):0}%</td><td>${x.eff}</td><td>${x.tech}</td><td>${x.ins}</td><td>${x.overall}</td></tr>`).join('')}
 function renderMatchPivot(){const rows=state.players.map(p=>{let matches=0,present=0,basis=0,bank=0,minutes=0,goals=0,yellow=0,red=0,eff=[],tech=[],ins=[];Object.values(state.matches).forEach(day=>{const r=day[p];if(!meaningfulMatch(r))return;matches++;if(r.attendance==='Aanwezig')present++;if(r.role==='Basis')basis++;if(r.role==='Bank')bank++;minutes+=+(r.minutes||0);goals+=+(r.goals||0);yellow+=+(r.yellow||0);red+=+(r.red||0);if(+r.effort)eff.push(+r.effort);if(+r.technique)tech.push(+r.technique);if(+r.insight)ins.push(+r.insight)});return{p,matches,present,basis,bank,minutes,goals,yellow,red,eff:avg(eff),tech:avg(tech),ins:avg(ins),overall:avg([...eff,...tech,...ins])}});$('matchPivot').innerHTML='<tr><th>Speler</th><th>Aanwezig</th><th>Basis</th><th>Bank</th><th>Minuten</th><th>Goals</th><th>Geel</th><th>Rood</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Gem.</th></tr>'+rows.map(x=>`<tr><td>${esc(x.p)}</td><td>${x.present}</td><td>${x.basis}</td><td>${x.bank}</td><td>${x.minutes}</td><td>${x.goals}</td><td>${x.yellow}</td><td>${x.red}</td><td>${x.eff}</td><td>${x.tech}</td><td>${x.ins}</td><td>${x.overall}</td></tr>`).join('')}
@@ -184,8 +296,18 @@ $('logoutBtn').onclick=async()=>{
   location.replace(SYNC_URL+'?returnUrl='+encodeURIComponent(location.origin+location.pathname));
 };
 $('exportTraining').onclick=()=>{const h=['Datum','Dag','Speler','Aanwezigheid','Inzet','Techniek','Inzicht','Gemiddelde','Notities'],rows=[];Object.entries(state.training).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulTraining(r))return;const dow=new Date(d+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long'});rows.push([d,dow,p,r.attendance,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.notes])}));download('VDZ_trainingen.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Trainingen geëxporteerd.'};
-$('exportMatches').onclick=()=>{const h=['Datum','Dag','Speler','Aanwezigheid','Rol','Positie','Speelminuten','Goals','Gele kaarten','Rode kaarten','Inzet','Techniek','Inzicht','Gemiddelde','Wissel 1 tijd','Wissel 1','Voor wie / door wie','Wissel 2 tijd','Wissel 2','Voor wie / door wie','Notities'],rows=[];Object.entries(state.matches).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulMatch(r))return;rows.push([d,'zaterdag',p,r.attendance,r.role,r.position,r.minutes,r.goals,r.yellow,r.red,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.sub1time,r.sub1type,r.sub1for,r.sub2time,r.sub2type,r.sub2for,r.notes])}));download('VDZ_wedstrijden.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Wedstrijden geëxporteerd.'};
-$('exportBackup').onclick=()=>download('VDZ_teamtracker_backup.json',JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2),'application/json');$('importBackup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.players)||!x.training||!x.matches)throw Error();state.players=x.players;state.training=x.training;state.matches=x.matches;save();renderPlayers();renderTraining();renderMatch();$('dataStatus').textContent='Backup succesvol geïmporteerd.'}catch{$('dataStatus').textContent='Ongeldig backupbestand.'}e.target.value=''};
+$('exportMatches').onclick=()=>{const h=['Datum','Dag','Tegenstander','Speler','Aanwezigheid','Rol','Positie','Speelminuten','Goals','Gele kaarten','Rode kaarten','Inzet','Techniek','Inzicht','Gemiddelde','Wissel 1 tijd','Wissel 1','Voor wie / door wie','Wissel 2 tijd','Wissel 2','Voor wie / door wie','Notities'],rows=[];Object.entries(state.matches).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulMatch(r))return;rows.push([d,'zaterdag',(state.matchMeta[d]&&state.matchMeta[d].opponent)||'',p,r.attendance,r.role,r.position,r.minutes,r.goals,r.yellow,r.red,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.sub1time,r.sub1type,r.sub1for,r.sub2time,r.sub2type,r.sub2for,r.notes])}));download('VDZ_wedstrijden.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Wedstrijden geëxporteerd.'};
+$('exportBackup').onclick=()=>download('VDZ_teamtracker_backup.json',JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2),'application/json');$('importBackup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.players)||!x.training||!x.matches)throw Error();state.players=sortNames(x.players);state.training=x.training;state.matches=x.matches;state.matchMeta=x.matchMeta||{};save();renderPlayers();renderTraining();renderMatch();$('dataStatus').textContent='Backup succesvol geïmporteerd.'}catch{$('dataStatus').textContent='Ongeldig backupbestand.'}e.target.value=''};
+
+$('trainingPlayerFilter').addEventListener('input',renderTraining);
+$('trainingAttendanceFilter').addEventListener('change',renderTraining);
+$('clearTrainingFilters').onclick=()=>{$('trainingPlayerFilter').value='';$('trainingAttendanceFilter').value='';renderTraining();};
+$('matchPlayerFilter').addEventListener('input',renderMatch);
+$('matchAttendanceFilter').addEventListener('change',renderMatch);
+$('matchRoleFilter').addEventListener('change',renderMatch);
+$('matchPositionFilter').addEventListener('change',renderMatch);
+$('clearMatchFilters').onclick=()=>{$('matchPlayerFilter').value='';$('matchAttendanceFilter').value='';$('matchRoleFilter').value='';$('matchPositionFilter').value='';renderMatch();};
+
 renderPlayers();renderTraining();renderMatch();renderTrainingDateAttendance();renderMatchDateAttendance();renderTrainingPivot();renderMatchPivot();renderDashboard();save();
 window.addEventListener('load',()=>{refreshFromSheets(false);if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});});
 </script>
