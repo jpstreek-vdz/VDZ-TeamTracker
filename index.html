@@ -111,7 +111,8 @@ const AUTH_TOKEN_KEY='vdz_auth_token', AUTH_EXPIRY_KEY='vdz_auth_expiry';
   }
 })();
 const defaultPlayers=["Rayan","Sander","Jelle","Niels","Mick","Teun","Sam","Flyn","Daan","Jayven","Tom","Kai","Skye","Lucas","Lasse","Kalle","Jullius","Abraham","Bamba"];
-const positions=["Centrale VD","L achter","R achter","Keeper","L midden","R midden","Centrale MV","Spits"];
+const defaultPositions=["Centrale VD","L achter","R achter","Keeper","L midden","R midden","Centrale MV","Spits"];
+let positions=JSON.parse(localStorage.getItem('tt_positions')||'null')||defaultPositions;
 const attendance=["","Aanwezig","Afwezig","Geblesseerd","Afgemeld"],roles=["","Basis","Bank"];
 const state={players:JSON.parse(localStorage.getItem('tt_players')||'null')||defaultPlayers,training:JSON.parse(localStorage.getItem('tt_training')||'{}'),matches:JSON.parse(localStorage.getItem('tt_matches')||'{}'),matchMeta:JSON.parse(localStorage.getItem('tt_match_meta')||'{}')};
 if(state.players.includes('Ryan')&&!state.players.includes('Rayan')) state.players[state.players.indexOf('Ryan')]='Rayan';
