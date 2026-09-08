@@ -526,6 +526,12 @@ $('addPlayer').onclick=async()=>{
 };
 function fmtDate(d){if(!d)return '';const p=String(d).slice(0,10).split('-');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:d}
 
+function isTodayOrPast(dateStr){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr||'')))return false;
+  const now=new Date();
+  const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  return String(dateStr)<=today;
+}
 function hasOccurredTraining(day){
   return state.players.some(p=>{
     const r=day&&day[p];
@@ -559,13 +565,14 @@ function renderTrainingOverview(){
   }
 
   entry.style.display='none';
-  const occurred=Object.values(state.training).filter(hasOccurredTraining).length;
+  const occurredTrainingDates=Object.entries(state.training)
+    .filter(([date,day])=>isTodayOrPast(date)&&hasOccurredTraining(day));
+  const occurred=occurredTrainingDates.length;
   title.textContent='Totaaloverzicht trainingen';
   table.innerHTML='<tr><th>Speler</th><th>Deelgenomen</th><th>Plaatsgevonden</th><th>Deelname %</th><th>Gem. score</th></tr>'+
     sortNames(state.players).map(p=>{
       let participated=0, scores=[];
-      Object.values(state.training).forEach(day=>{
-        if(!hasOccurredTraining(day))return;
+      occurredTrainingDates.forEach(([date,day])=>{
         const r=(day&&day[p])||{};
         if(r.attendance==='Aanwezig')participated++;
         const s=Number(recordScore(r));
@@ -593,13 +600,14 @@ function renderMatchOverview(){
   }
 
   entry.style.display='none';
-  const occurred=Object.values(state.matches).filter(hasOccurredMatch).length;
+  const occurredMatchDates=Object.entries(state.matches)
+    .filter(([date,day])=>isTodayOrPast(date)&&hasOccurredMatch(day));
+  const occurred=occurredMatchDates.length;
   title.textContent='Totaaloverzicht wedstrijden';
   table.innerHTML='<tr><th>Speler</th><th>Deelgenomen</th><th>Plaatsgevonden</th><th>Deelname %</th><th>Gem. score</th></tr>'+
     sortNames(state.players).map(p=>{
       let participated=0, scores=[];
-      Object.values(state.matches).forEach(day=>{
-        if(!hasOccurredMatch(day))return;
+      occurredMatchDates.forEach(([date,day])=>{
         const r=(day&&day[p])||{};
         if(r.attendance==='Aanwezig')participated++;
         const s=Number(recordScore(r));
