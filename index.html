@@ -300,8 +300,119 @@ async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);s
 $('loadMatch').onclick=()=>{openedMatchDate=$('matchDate').value;renderMatch();renderMatchOverview();};
 $('matchTotalOverview').onclick=()=>{openedMatchDate='';renderMatchOverview();};
 $('saveMatch').onclick=collectMatch;
-function renderPlayers(){state.players=sortNames(state.players);$('playerTable').innerHTML='<tr><th>Naam</th><th></th></tr>'+state.players.map((p,i)=>`<tr><td>${esc(p)}</td><td><button class="btn danger" onclick="removePlayer(${i})">Verwijder</button></td></tr>`).join('')}
-window.removePlayer=i=>{if(confirm('Speler verwijderen?')){state.players.splice(i,1);save();renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview()}};$('addPlayer').onclick=()=>{const n=$('newPlayer').value.trim();if(n&&!state.players.includes(n)){state.players=sortNames([...state.players,n]);$('newPlayer').value='';save();renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview()}};
+function renderPlayers(){
+  state.players=sortNames(state.players);
+  $('playerTable').innerHTML=
+    '<tr><th>Naam</th><th>Achternaam</th><th>Telefoon</th><th>Geboortedatum</th><th>E-mail</th><th>Acties</th></tr>'+
+    state.players.map((p,i)=>{
+      const d=state.playerDetails[p]||{};
+      return `<tr data-player-row="${i}">
+        <td><input data-pf="firstName" value="${esc(p)}"></td>
+        <td><input data-pf="lastName" value="${esc(d.lastName||'')}"></td>
+        <td><input data-pf="phone" type="tel" value="${esc(d.phone||'')}"></td>
+        <td><input data-pf="birthDate" type="date" value="${esc(d.birthDate||'')}"></td>
+        <td><input data-pf="email" type="email" value="${esc(d.email||'')}"></td>
+        <td>
+          <button class="btn secondary" type="button" data-save-player="${i}">Opslaan</button>
+          <button class="btn danger" type="button" data-delete-player="${i}">Verwijder</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+  document.querySelectorAll('[data-save-player]').forEach(btn=>{
+    btn.onclick=()=>{
+      const i=Number(btn.dataset.savePlayer);
+      const oldName=state.players[i];
+      const row=btn.closest('tr');
+      const values={};
+      row.querySelectorAll('[data-pf]').forEach(el=>values[el.dataset.pf]=el.value.trim());
+
+      const newName=values.firstName||oldName;
+      if(newName!==oldName && state.players.includes(newName)){
+        alert('Er bestaat al een speler met deze naam.');
+        return;
+      }
+
+      state.playerDetails[newName]={
+        lastName:values.lastName||'',
+        phone:values.phone||'',
+        birthDate:values.birthDate||'',
+        email:values.email||''
+      };
+
+      if(newName!==oldName){
+        delete state.playerDetails[oldName];
+        state.players[i]=newName;
+        Object.values(state.training).forEach(day=>{
+          if(day[oldName] && !day[newName]){
+            day[newName]=day[oldName];
+            delete day[oldName];
+          }
+        });
+        Object.values(state.matches).forEach(day=>{
+          if(day[oldName] && !day[newName]){
+            day[newName]=day[oldName];
+            delete day[oldName];
+          }
+        });
+      }
+
+      state.players=sortNames(state.players);
+      save();
+      renderPlayers();
+      renderTraining();
+      renderMatch();
+      renderTrainingOverview();
+      renderMatchOverview();
+    };
+  });
+
+  document.querySelectorAll('[data-delete-player]').forEach(btn=>{
+    btn.onclick=()=>{
+      const i=Number(btn.dataset.deletePlayer);
+      const name=state.players[i];
+      if(!confirm('Speler verwijderen?')) return;
+      state.players.splice(i,1);
+      delete state.playerDetails[name];
+      Object.values(state.training).forEach(day=>delete day[name]);
+      Object.values(state.matches).forEach(day=>delete day[name]);
+      save();
+      renderPlayers();
+      renderTraining();
+      renderMatch();
+      renderTrainingOverview();
+      renderMatchOverview();
+    };
+  });
+}
+
+$('addPlayer').onclick=()=>{
+  const firstName=$('newPlayer').value.trim();
+  if(!firstName){
+    alert('Vul minimaal de naam in.');
+    return;
+  }
+  if(state.players.includes(firstName)){
+    alert('Deze speler bestaat al.');
+    return;
+  }
+
+  state.players=sortNames([...state.players,firstName]);
+  state.playerDetails[firstName]={
+    lastName:$('newLastName').value.trim(),
+    phone:$('newPhone').value.trim(),
+    birthDate:$('newBirthDate').value,
+    email:$('newEmail').value.trim()
+  };
+
+  ['newPlayer','newLastName','newPhone','newBirthDate','newEmail'].forEach(id=>$(id).value='');
+  save();
+  renderPlayers();
+  renderTraining();
+  renderMatch();
+  renderTrainingOverview();
+  renderMatchOverview();
+};
 function fmtDate(d){if(!d)return '';const p=String(d).slice(0,10).split('-');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:d}
 
 function hasOccurredTraining(day){
