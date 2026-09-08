@@ -33,20 +33,33 @@ main{padding:14px;max-width:1250px;margin:auto}.view{display:none}.view.active{d
 @media(max-width:520px){.player-detail-grid{grid-template-columns:1fr;gap:4px}.player-detail-grid .value{margin-bottom:8px}}
 
 
-/* Veldnamen zichtbaar houden tijdens scrollen */
+/* Veldnamen zichtbaar houden zonder de eerste speler te bedekken */
+.scroll{
+  overflow:auto;
+  max-width:100%;
+  max-height:70vh;
+  position:relative;
+}
+table th{
+  position:sticky;
+  top:0;
+  z-index:6;
+  background:#f1f2f4;
+}
+#matchList{
+  max-height:70vh;
+  overflow:auto;
+  position:relative;
+}
 .match-row.header{
   position:sticky;
-  top:132px;
-  z-index:15;
+  top:0;
+  z-index:7;
   background:#f1f2f4;
   border:1px solid var(--border);
   border-radius:9px;
   padding-left:8px;
   padding-right:8px;
-}
-table th{
-  top:132px;
-  z-index:14;
 }
 
 /* Spelers: in de lijst alleen namen */
@@ -69,8 +82,10 @@ table th{
 .player-detail-form .field input{width:100%}
 .player-contact-actions{padding-top:4px}
 @media(max-width:850px){
-  .match-row.header{top:52px}
-  table th{top:52px}
+  .scroll{max-height:65vh}
+  #matchList{max-height:65vh}
+  .match-row.header{top:0}
+  table th{top:0}
 }
 
 </style>
@@ -621,6 +636,7 @@ function renderMatchOverview(){
 function renderTrainingDateAttendance(){
   const rows=[];
   Object.entries(state.training).sort(([a],[b])=>a.localeCompare(b)).forEach(([date,day])=>{
+    if(!isTodayOrPast(date))return;
     let present=0,absent=0,injured=0,excused=0,total=0;
     state.players.forEach(p=>{const r=day[p];if(!meaningfulTraining(r)||!r.attendance)return;total++;if(r.attendance==='Aanwezig')present++;else if(r.attendance==='Afwezig')absent++;else if(r.attendance==='Geblesseerd')injured++;else if(r.attendance==='Afgemeld')excused++;});
     if(total)rows.push({date,present,absent,injured,excused,total});
@@ -630,20 +646,21 @@ function renderTrainingDateAttendance(){
 function renderMatchDateAttendance(){
   const rows=[];
   Object.entries(state.matches).sort(([a],[b])=>a.localeCompare(b)).forEach(([date,day])=>{
+    if(!isTodayOrPast(date))return;
     let present=0,absent=0,injured=0,excused=0,total=0;
     state.players.forEach(p=>{const r=day[p];if(!meaningfulMatch(r)||!r.attendance)return;total++;if(r.attendance==='Aanwezig')present++;else if(r.attendance==='Afwezig')absent++;else if(r.attendance==='Geblesseerd')injured++;else if(r.attendance==='Afgemeld')excused++;});
     if(total)rows.push({date,opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',present,absent,injured,excused,total});
   });
   $('matchDateAttendance').innerHTML='<tr><th>Datum</th><th>Tegenstander</th><th>Aanwezig</th><th>Afwezig</th><th>Geblesseerd</th><th>Afgemeld</th><th>Totaal ingevuld</th><th>Aanwezig %</th></tr>'+(rows.length?rows.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(x.opponent)}</td><td>${x.present}</td><td>${x.absent}</td><td>${x.injured}</td><td>${x.excused}</td><td>${x.total}</td><td>${x.total?Math.round(x.present/x.total*100):0}%</td></tr>`).join(''):'<tr><td colspan="8">Nog geen aanwezigheid vastgelegd.</td></tr>');
 }
-function renderTrainingPivot(){const rows=state.players.map(p=>{let sessions=0,present=0,absent=0,injured=0,excused=0,eff=[],tech=[],ins=[];Object.values(state.training).forEach(day=>{const r=day[p];if(!meaningfulTraining(r))return;sessions++;if(r.attendance==='Aanwezig')present++;else if(r.attendance==='Afwezig')absent++;else if(r.attendance==='Geblesseerd')injured++;else if(r.attendance==='Afgemeld')excused++;if(Number(r.effort))eff.push(+r.effort);if(Number(r.technique))tech.push(+r.technique);if(Number(r.insight))ins.push(+r.insight)});return{p,sessions,present,absent,injured,excused,eff:avg(eff),tech:avg(tech),ins:avg(ins),overall:avg([...eff,...tech,...ins])}});$('trainingPivot').innerHTML='<tr><th>Speler</th><th>Aanwezig</th><th>Afwezig</th><th>Geblesseerd</th><th>Afgemeld</th><th>Aanwezig %</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Gem.</th></tr>'+rows.map(x=>`<tr><td>${esc(x.p)}</td><td>${x.present}</td><td>${x.absent}</td><td>${x.injured}</td><td>${x.excused}</td><td>${x.sessions?Math.round(x.present/x.sessions*100):0}%</td><td>${x.eff}</td><td>${x.tech}</td><td>${x.ins}</td><td>${x.overall}</td></tr>`).join('')}
-function renderMatchPivot(){const rows=state.players.map(p=>{let matches=0,present=0,basis=0,bank=0,minutes=0,goals=0,yellow=0,red=0,eff=[],tech=[],ins=[];Object.values(state.matches).forEach(day=>{const r=day[p];if(!meaningfulMatch(r))return;matches++;if(r.attendance==='Aanwezig')present++;if(r.role==='Basis')basis++;if(r.role==='Bank')bank++;minutes+=+(r.minutes||0);goals+=+(r.goals||0);yellow+=+(r.yellow||0);red+=+(r.red||0);if(+r.effort)eff.push(+r.effort);if(+r.technique)tech.push(+r.technique);if(+r.insight)ins.push(+r.insight)});return{p,matches,present,basis,bank,minutes,goals,yellow,red,eff:avg(eff),tech:avg(tech),ins:avg(ins),overall:avg([...eff,...tech,...ins])}});$('matchPivot').innerHTML='<tr><th>Speler</th><th>Aanwezig</th><th>Basis</th><th>Bank</th><th>Minuten</th><th>Goals</th><th>Geel</th><th>Rood</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Gem.</th></tr>'+rows.map(x=>`<tr><td>${esc(x.p)}</td><td>${x.present}</td><td>${x.basis}</td><td>${x.bank}</td><td>${x.minutes}</td><td>${x.goals}</td><td>${x.yellow}</td><td>${x.red}</td><td>${x.eff}</td><td>${x.tech}</td><td>${x.ins}</td><td>${x.overall}</td></tr>`).join('')}
+function renderTrainingPivot(){const rows=state.players.map(p=>{let sessions=0,present=0,absent=0,injured=0,excused=0,eff=[],tech=[],ins=[];Object.entries(state.training).forEach(([date,day])=>{if(!isTodayOrPast(date))return;const r=day[p];if(!meaningfulTraining(r))return;sessions++;if(r.attendance==='Aanwezig')present++;else if(r.attendance==='Afwezig')absent++;else if(r.attendance==='Geblesseerd')injured++;else if(r.attendance==='Afgemeld')excused++;if(Number(r.effort))eff.push(+r.effort);if(Number(r.technique))tech.push(+r.technique);if(Number(r.insight))ins.push(+r.insight)});return{p,sessions,present,absent,injured,excused,eff:avg(eff),tech:avg(tech),ins:avg(ins),overall:avg([...eff,...tech,...ins])}});$('trainingPivot').innerHTML='<tr><th>Speler</th><th>Aanwezig</th><th>Afwezig</th><th>Geblesseerd</th><th>Afgemeld</th><th>Aanwezig %</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Gem.</th></tr>'+rows.map(x=>`<tr><td>${esc(x.p)}</td><td>${x.present}</td><td>${x.absent}</td><td>${x.injured}</td><td>${x.excused}</td><td>${x.sessions?Math.round(x.present/x.sessions*100):0}%</td><td>${x.eff}</td><td>${x.tech}</td><td>${x.ins}</td><td>${x.overall}</td></tr>`).join('')}
+function renderMatchPivot(){const rows=state.players.map(p=>{let matches=0,present=0,basis=0,bank=0,minutes=0,goals=0,yellow=0,red=0,eff=[],tech=[],ins=[];Object.entries(state.matches).forEach(([date,day])=>{if(!isTodayOrPast(date))return;const r=day[p];if(!meaningfulMatch(r))return;matches++;if(r.attendance==='Aanwezig')present++;if(r.role==='Basis')basis++;if(r.role==='Bank')bank++;minutes+=+(r.minutes||0);goals+=+(r.goals||0);yellow+=+(r.yellow||0);red+=+(r.red||0);if(+r.effort)eff.push(+r.effort);if(+r.technique)tech.push(+r.technique);if(+r.insight)ins.push(+r.insight)});return{p,matches,present,basis,bank,minutes,goals,yellow,red,eff:avg(eff),tech:avg(tech),ins:avg(ins),overall:avg([...eff,...tech,...ins])}});$('matchPivot').innerHTML='<tr><th>Speler</th><th>Aanwezig</th><th>Basis</th><th>Bank</th><th>Minuten</th><th>Goals</th><th>Geel</th><th>Rood</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Gem.</th></tr>'+rows.map(x=>`<tr><td>${esc(x.p)}</td><td>${x.present}</td><td>${x.basis}</td><td>${x.bank}</td><td>${x.minutes}</td><td>${x.goals}</td><td>${x.yellow}</td><td>${x.red}</td><td>${x.eff}</td><td>${x.tech}</td><td>${x.ins}</td><td>${x.overall}</td></tr>`).join('')}
 function renderDashboard(){
   let rows=[],tg=0,ty=0,trd=0,totalTrainingPresent=0,totalMatchPresent=0,totalTrainingEntries=0,totalMatchEntries=0;
   state.players.forEach(p=>{
     let ta=0,tt=0,ma=0,mt=0,g=0,y=0,r=0,s=[];
-    Object.values(state.training).forEach(day=>{const x=day[p];if(!meaningfulTraining(x)||!x.attendance)return;tt++;totalTrainingEntries++;if(x.attendance==='Aanwezig'){ta++;totalTrainingPresent++;}['effort','technique','insight'].forEach(k=>{if(+x[k])s.push(+x[k])})});
-    Object.values(state.matches).forEach(day=>{const x=day[p];if(!meaningfulMatch(x)||!x.attendance)return;mt++;totalMatchEntries++;if(x.attendance==='Aanwezig'){ma++;totalMatchPresent++;}g+=+(x.goals||0);y+=+(x.yellow||0);r+=+(x.red||0);['effort','technique','insight'].forEach(k=>{if(+x[k])s.push(+x[k])})});
+    Object.entries(state.training).forEach(([date,day])=>{if(!isTodayOrPast(date))return;const x=day[p];if(!meaningfulTraining(x)||!x.attendance)return;tt++;totalTrainingEntries++;if(x.attendance==='Aanwezig'){ta++;totalTrainingPresent++;}['effort','technique','insight'].forEach(k=>{if(+x[k])s.push(+x[k])})});
+    Object.entries(state.matches).forEach(([date,day])=>{if(!isTodayOrPast(date))return;const x=day[p];if(!meaningfulMatch(x)||!x.attendance)return;mt++;totalMatchEntries++;if(x.attendance==='Aanwezig'){ma++;totalMatchPresent++;}g+=+(x.goals||0);y+=+(x.yellow||0);r+=+(x.red||0);['effort','technique','insight'].forEach(k=>{if(+x[k])s.push(+x[k])})});
     tg+=g;ty+=y;trd+=r;
     rows.push({p,ta,tt,ma,mt,totalPresent:ta+ma,totalEvents:tt+mt,g,y,r,score:s.length?(s.reduce((a,b)=>a+b,0)/s.length).toFixed(1):''});
   });
