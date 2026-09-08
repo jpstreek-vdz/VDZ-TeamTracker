@@ -37,9 +37,15 @@ main{padding:14px;max-width:1250px;margin:auto}.view{display:none}.view.active{d
       <div class="toolbar">
         <div class="field"><label>Datum</label><input type="date" id="trainingDate"></div>
         <button class="btn" id="loadTraining">Training openen</button>
+        <button class="btn secondary" id="trainingTotalOverview" type="button">Totaaloverzicht</button>
         <button class="btn secondary" id="saveTraining">Opslaan + synchroniseren</button>
         <span class="status" id="trainingSyncStatus"></span>
       </div>
+      <div class="card">
+        <h3 id="trainingOverviewTitle">Totaaloverzicht trainingen</h3>
+        <div class="scroll"><table id="trainingOverviewTable"></table></div>
+      </div>
+      <div id="trainingEntryArea">
       <div class="filterbar">
         <div class="field"><label>Filter speler</label><input type="search" id="trainingPlayerFilter" placeholder="Typ naam"></div>
         <div class="field"><label>Aanwezigheid</label>
@@ -54,15 +60,22 @@ main{padding:14px;max-width:1250px;margin:auto}.view{display:none}.view.active{d
       <div class="card"><h3>Aanwezigheid per trainingsdatum</h3><div class="scroll"><table id="trainingDateAttendance"></table></div></div>
       <div class="card"><h3>Trainingsoverzicht per speler</h3><div class="scroll"><table id="trainingPivot"></table></div></div>
       <div id="trainingList" class="card"></div>
+      </div>
     </section>
 <section id="matches" class="view">
       <div class="toolbar">
         <div class="field"><label>Wedstrijddatum</label><input type="date" id="matchDate"></div>
         <div class="field"><label>Tegenstander</label><input type="text" id="opponentName" placeholder="Naam tegenstander"></div>
         <button class="btn" id="loadMatch">Wedstrijd openen</button>
+        <button class="btn secondary" id="matchTotalOverview" type="button">Totaaloverzicht</button>
         <button class="btn secondary" id="saveMatch">Opslaan + synchroniseren</button>
         <span class="status" id="matchSyncStatus"></span>
       </div>
+      <div class="card">
+        <h3 id="matchOverviewTitle">Totaaloverzicht wedstrijden</h3>
+        <div class="scroll"><table id="matchOverviewTable"></table></div>
+      </div>
+      <div id="matchEntryArea">
       <div class="filterbar">
         <div class="field"><label>Filter speler</label><input type="search" id="matchPlayerFilter" placeholder="Typ naam"></div>
         <div class="field"><label>Aanwezigheid</label>
@@ -86,6 +99,7 @@ main{padding:14px;max-width:1250px;margin:auto}.view{display:none}.view.active{d
       <div class="card"><h3>Aanwezigheid per wedstrijddatum</h3><div class="scroll"><table id="matchDateAttendance"></table></div></div>
       <div class="card"><h3>Wedstrijdoverzicht per speler</h3><div class="scroll"><table id="matchPivot"></table></div></div>
       <div class="card scroll"><div id="matchList"></div></div>
+      </div>
     </section>
 <section id="players" class="view"><div class="card"><div class="toolbar"><div class="field"><label>Nieuwe speler</label><input id="newPlayer" placeholder="Naam"></div><button class="btn" id="addPlayer">Toevoegen</button></div><div class="scroll"><table id="playerTable"></table></div></div></section>
 <section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen en wedstrijden lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
@@ -117,6 +131,8 @@ const attendance=["","Aanwezig","Afwezig","Geblesseerd","Afgemeld"],roles=["","B
 const state={players:JSON.parse(localStorage.getItem('tt_players')||'null')||defaultPlayers,training:JSON.parse(localStorage.getItem('tt_training')||'{}'),matches:JSON.parse(localStorage.getItem('tt_matches')||'{}'),matchMeta:JSON.parse(localStorage.getItem('tt_match_meta')||'{}')};
 if(state.players.includes('Ryan')&&!state.players.includes('Rayan')) state.players[state.players.indexOf('Ryan')]='Rayan';
 const sortNames=arr=>[...new Set(arr)].sort((a,b)=>String(a).localeCompare(String(b),'nl',{sensitivity:'base'}));
+let openedTrainingDate='';
+let openedMatchDate='';
 state.players=sortNames(state.players);
 const $=id=>document.getElementById(id), avg=arr=>{const n=arr.map(Number).filter(x=>x>0);return n.length?(n.reduce((a,b)=>a+b,0)/n.length).toFixed(1):''},esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const opt=(arr,val)=>arr.map(x=>`<option ${String(x)===String(val)?'selected':''}>${x}</option>`).join(''),scoreOpt=v=>opt(['',1,2,3,4,5],v);const today=()=>new Date().toISOString().slice(0,10);$('trainingDate').value=today();$('matchDate').value=today();
@@ -187,6 +203,8 @@ function mergeCentralData(data){
   renderPlayers();
   renderTraining();
   renderMatch();
+  renderTrainingOverview();
+  renderMatchOverview();
 }
 async function refreshFromSheets(showStatus=true){
   const status=$('dataStatus');
@@ -229,8 +247,10 @@ function renderTraining(){
     return `<div class="player-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><div class="field"><label>Aanwezigheid</label><select data-k="attendance">${opt(attendance,r.attendance)}</select></div><div class="field"><label>Inzet</label><select data-k="effort">${scoreOpt(r.effort)}</select></div><div class="field"><label>Techniek</label><select data-k="technique">${scoreOpt(r.technique)}</select></div><div class="field"><label>Inzicht</label><select data-k="insight">${scoreOpt(r.insight)}</select></div><div class="field"><label>Gem.</label><input disabled value="${avg([r.effort,r.technique,r.insight])}"></div><div class="field"><label>Notities</label><input data-k="notes" value="${esc(r.notes)}"></div></div>`;
   }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>';
 }
-async function collectTraining(){const date=$('trainingDate').value,d=getTraining(date);document.querySelectorAll('#trainingList .player-row').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderTraining();await postSync(trainingPayload(date,d),'trainingSyncStatus')}
-$('loadTraining').onclick=renderTraining;$('saveTraining').onclick=collectTraining;
+async function collectTraining(){const date=$('trainingDate').value,d=getTraining(date);document.querySelectorAll('#trainingList .player-row').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderTraining();renderTrainingOverview();await postSync(trainingPayload(date,d),'trainingSyncStatus')}
+$('loadTraining').onclick=()=>{openedTrainingDate=$('trainingDate').value;renderTraining();renderTrainingOverview();};
+$('trainingTotalOverview').onclick=()=>{openedTrainingDate='';renderTrainingOverview();};
+$('saveTraining').onclick=collectTraining;
 function getMatch(date){if(!state.matches[date])state.matches[date]={};state.players.forEach(p=>state.matches[date][p]??={attendance:'',role:'',position:'',minutes:'',goals:0,yellow:0,red:0,effort:'',technique:'',insight:'',sub1time:'',sub1type:'',sub1for:'',sub2time:'',sub2type:'',sub2for:'',notes:''});return state.matches[date]}
 function renderPositionFilter(){
   const el=$('matchPositionFilter');
@@ -260,11 +280,98 @@ function renderMatch(){
     return `<div class="match-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><select data-k="attendance">${opt(attendance,r.attendance)}</select><select data-k="role">${opt(roles,r.role)}</select><select data-k="position">${opt(['',...positions],r.position)}</select><input data-k="minutes" type="number" min="0" value="${r.minutes}"><input data-k="goals" type="number" min="0" value="${r.goals}"><input data-k="yellow" type="number" min="0" value="${r.yellow}"><input data-k="red" type="number" min="0" value="${r.red}"><select data-k="effort">${scoreOpt(r.effort)}</select><select data-k="technique">${scoreOpt(r.technique)}</select><select data-k="insight">${scoreOpt(r.insight)}</select><input disabled value="${avg([r.effort,r.technique,r.insight])}"><input data-k="sub1time" placeholder="min" value="${esc(r.sub1time)}"><select data-k="sub1type">${opt(['','In','Uit'],r.sub1type)}</select><input data-k="sub1for" value="${esc(r.sub1for)}"><input data-k="sub2time" placeholder="min" value="${esc(r.sub2time)}"><select data-k="sub2type">${opt(['','In','Uit'],r.sub2type)}</select><input data-k="sub2for" value="${esc(r.sub2for)}"><input data-k="notes" value="${esc(r.notes)}"></div>`;
   }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>');
 }
-async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);state.matchMeta[date]={opponent:$('opponentName').value.trim()};document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderMatch();await postSync(matchPayload(date,d),'matchSyncStatus')}
-$('loadMatch').onclick=renderMatch;$('saveMatch').onclick=collectMatch;
+async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);state.matchMeta[date]={opponent:$('opponentName').value.trim()};document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderMatch();renderMatchOverview();await postSync(matchPayload(date,d),'matchSyncStatus')}
+$('loadMatch').onclick=()=>{openedMatchDate=$('matchDate').value;renderMatch();renderMatchOverview();};
+$('matchTotalOverview').onclick=()=>{openedMatchDate='';renderMatchOverview();};
+$('saveMatch').onclick=collectMatch;
 function renderPlayers(){state.players=sortNames(state.players);$('playerTable').innerHTML='<tr><th>Naam</th><th></th></tr>'+state.players.map((p,i)=>`<tr><td>${esc(p)}</td><td><button class="btn danger" onclick="removePlayer(${i})">Verwijder</button></td></tr>`).join('')}
-window.removePlayer=i=>{if(confirm('Speler verwijderen?')){state.players.splice(i,1);save();renderPlayers();renderTraining();renderMatch()}};$('addPlayer').onclick=()=>{const n=$('newPlayer').value.trim();if(n&&!state.players.includes(n)){state.players=sortNames([...state.players,n]);$('newPlayer').value='';save();renderPlayers();renderTraining();renderMatch()}};
+window.removePlayer=i=>{if(confirm('Speler verwijderen?')){state.players.splice(i,1);save();renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview()}};$('addPlayer').onclick=()=>{const n=$('newPlayer').value.trim();if(n&&!state.players.includes(n)){state.players=sortNames([...state.players,n]);$('newPlayer').value='';save();renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview()}};
 function fmtDate(d){if(!d)return '';const p=String(d).slice(0,10).split('-');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:d}
+
+function hasOccurredTraining(day){
+  return state.players.some(p=>{
+    const r=day&&day[p];
+    return !!(r && (r.attendance || r.effort || r.technique || r.insight || r.notes));
+  });
+}
+function hasOccurredMatch(day){
+  return state.players.some(p=>{
+    const r=day&&day[p];
+    return !!(r && (r.attendance || r.role || r.position || r.minutes || Number(r.goals||0) || Number(r.yellow||0) || Number(r.red||0) || r.effort || r.technique || r.insight || r.sub1time || r.sub1type || r.sub1for || r.sub2time || r.sub2type || r.sub2for || r.notes));
+  });
+}
+function recordScore(r){
+  if(!r)return '';
+  return avg([r.effort,r.technique,r.insight]);
+}
+function renderTrainingOverview(){
+  const table=$('trainingOverviewTable'),title=$('trainingOverviewTitle'),entry=$('trainingEntryArea');
+  if(!table||!title||!entry)return;
+
+  if(openedTrainingDate){
+    const day=state.training[openedTrainingDate]||{};
+    title.textContent='Training '+fmtDate(openedTrainingDate)+' – specifiek overzicht';
+    entry.style.display='';
+    table.innerHTML='<tr><th>Speler</th><th>Aanwezigheid</th><th>Score</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th></tr>'+
+      sortNames(state.players).map(p=>{
+        const r=day[p]||{};
+        return `<tr><td>${esc(p)}</td><td>${esc(r.attendance||'')}</td><td><b>${recordScore(r)}</b></td><td>${esc(r.effort||'')}</td><td>${esc(r.technique||'')}</td><td>${esc(r.insight||'')}</td></tr>`;
+      }).join('');
+    return;
+  }
+
+  entry.style.display='none';
+  const occurred=Object.values(state.training).filter(hasOccurredTraining).length;
+  title.textContent='Totaaloverzicht trainingen';
+  table.innerHTML='<tr><th>Speler</th><th>Deelgenomen</th><th>Plaatsgevonden</th><th>Deelname %</th><th>Gem. score</th></tr>'+
+    sortNames(state.players).map(p=>{
+      let participated=0, scores=[];
+      Object.values(state.training).forEach(day=>{
+        if(!hasOccurredTraining(day))return;
+        const r=(day&&day[p])||{};
+        if(r.attendance==='Aanwezig')participated++;
+        const s=Number(recordScore(r));
+        if(s>0)scores.push(s);
+      });
+      const score=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'';
+      return `<tr><td>${esc(p)}</td><td><b>${participated}</b></td><td>${occurred}</td><td><b>${occurred?Math.round(participated/occurred*100):0}%</b></td><td>${score}</td></tr>`;
+    }).join('');
+}
+function renderMatchOverview(){
+  const table=$('matchOverviewTable'),title=$('matchOverviewTitle'),entry=$('matchEntryArea');
+  if(!table||!title||!entry)return;
+
+  if(openedMatchDate){
+    const day=state.matches[openedMatchDate]||{};
+    const opponent=(state.matchMeta[openedMatchDate]&&state.matchMeta[openedMatchDate].opponent)||'';
+    title.textContent='Wedstrijd '+fmtDate(openedMatchDate)+(opponent?' – '+opponent:'')+' – specifiek overzicht';
+    entry.style.display='';
+    table.innerHTML='<tr><th>Speler</th><th>Aanwezigheid</th><th>Score</th><th>Rol</th><th>Positie</th><th>Minuten</th><th>Goals</th></tr>'+
+      sortNames(state.players).map(p=>{
+        const r=day[p]||{};
+        return `<tr><td>${esc(p)}</td><td>${esc(r.attendance||'')}</td><td><b>${recordScore(r)}</b></td><td>${esc(r.role||'')}</td><td><b>${esc(r.position||'')}</b></td><td>${esc(r.minutes||'')}</td><td>${Number(r.goals||0)}</td></tr>`;
+      }).join('');
+    return;
+  }
+
+  entry.style.display='none';
+  const occurred=Object.values(state.matches).filter(hasOccurredMatch).length;
+  title.textContent='Totaaloverzicht wedstrijden';
+  table.innerHTML='<tr><th>Speler</th><th>Deelgenomen</th><th>Plaatsgevonden</th><th>Deelname %</th><th>Gem. score</th></tr>'+
+    sortNames(state.players).map(p=>{
+      let participated=0, scores=[];
+      Object.values(state.matches).forEach(day=>{
+        if(!hasOccurredMatch(day))return;
+        const r=(day&&day[p])||{};
+        if(r.attendance==='Aanwezig')participated++;
+        const s=Number(recordScore(r));
+        if(s>0)scores.push(s);
+      });
+      const score=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'';
+      return `<tr><td>${esc(p)}</td><td><b>${participated}</b></td><td>${occurred}</td><td><b>${occurred?Math.round(participated/occurred*100):0}%</b></td><td>${score}</td></tr>`;
+    }).join('');
+}
+
 function renderTrainingDateAttendance(){
   const rows=[];
   Object.entries(state.training).sort(([a],[b])=>a.localeCompare(b)).forEach(([date,day])=>{
@@ -308,7 +415,7 @@ $('logoutBtn').onclick=async()=>{
 };
 $('exportTraining').onclick=()=>{const h=['Datum','Dag','Speler','Aanwezigheid','Inzet','Techniek','Inzicht','Gemiddelde','Notities'],rows=[];Object.entries(state.training).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulTraining(r))return;const dow=new Date(d+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long'});rows.push([d,dow,p,r.attendance,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.notes])}));download('VDZ_trainingen.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Trainingen geëxporteerd.'};
 $('exportMatches').onclick=()=>{const h=['Datum','Dag','Tegenstander','Speler','Aanwezigheid','Rol','Positie','Speelminuten','Goals','Gele kaarten','Rode kaarten','Inzet','Techniek','Inzicht','Gemiddelde','Wissel 1 tijd','Wissel 1','Voor wie / door wie','Wissel 2 tijd','Wissel 2','Voor wie / door wie','Notities'],rows=[];Object.entries(state.matches).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulMatch(r))return;rows.push([d,'zaterdag',(state.matchMeta[d]&&state.matchMeta[d].opponent)||'',p,r.attendance,r.role,r.position,r.minutes,r.goals,r.yellow,r.red,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.sub1time,r.sub1type,r.sub1for,r.sub2time,r.sub2type,r.sub2for,r.notes])}));download('VDZ_wedstrijden.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Wedstrijden geëxporteerd.'};
-$('exportBackup').onclick=()=>download('VDZ_teamtracker_backup.json',JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2),'application/json');$('importBackup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.players)||!x.training||!x.matches)throw Error();state.players=sortNames(x.players);state.training=x.training;state.matches=x.matches;state.matchMeta=x.matchMeta||{};save();renderPlayers();renderTraining();renderMatch();$('dataStatus').textContent='Backup succesvol geïmporteerd.'}catch{$('dataStatus').textContent='Ongeldig backupbestand.'}e.target.value=''};
+$('exportBackup').onclick=()=>download('VDZ_teamtracker_backup.json',JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2),'application/json');$('importBackup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.players)||!x.training||!x.matches)throw Error();state.players=sortNames(x.players);state.training=x.training;state.matches=x.matches;state.matchMeta=x.matchMeta||{};save();renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview();$('dataStatus').textContent='Backup succesvol geïmporteerd.'}catch{$('dataStatus').textContent='Ongeldig backupbestand.'}e.target.value=''};
 
 $('trainingPlayerFilter').addEventListener('input',renderTraining);
 $('trainingAttendanceFilter').addEventListener('change',renderTraining);
@@ -319,7 +426,7 @@ $('matchRoleFilter').addEventListener('change',renderMatch);
 $('matchPositionFilter').addEventListener('change',renderMatch);
 $('clearMatchFilters').onclick=()=>{$('matchPlayerFilter').value='';$('matchAttendanceFilter').value='';$('matchRoleFilter').value='';$('matchPositionFilter').value='';renderMatch();};
 
-renderPlayers();renderTraining();renderMatch();renderTrainingDateAttendance();renderMatchDateAttendance();renderTrainingPivot();renderMatchPivot();renderDashboard();save();
+renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview();renderTrainingDateAttendance();renderMatchDateAttendance();renderTrainingPivot();renderMatchPivot();renderDashboard();save();
 window.addEventListener('load',()=>{refreshFromSheets(false);if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});});
 </script>
 </body></html>
