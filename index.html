@@ -244,7 +244,7 @@ function renderTraining(){
   });
   $('trainingList').innerHTML=players.length?players.map(p=>{
     const r=d[p];
-    return `<div class="player-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><div class="field"><label>Aanwezigheid</label><select data-k="attendance">${opt(attendance,r.attendance)}</select></div><div class="field"><label>Inzet</label><select data-k="effort">${scoreOpt(r.effort)}</select></div><div class="field"><label>Techniek</label><select data-k="technique">${scoreOpt(r.technique)}</select></div><div class="field"><label>Inzicht</label><select data-k="insight">${scoreOpt(r.insight)}</select></div><div class="field"><label>Gem.</label><input disabled value="${avg([r.effort,r.technique,r.insight])}"></div><div class="field"><label>Notities</label><input data-k="notes" value="${esc(r.notes)}"></div></div>`;
+    return `<div class="player-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><div class="field"><label>Aanwezigheid</label><select data-k="attendance">${opt(attendance,r.attendance)}</select></div><div class="field"><label>Inzet</label><select data-k="effort">${scoreOpt(r.effort)}</select></div><div class="field"><label>Techniek</label><select data-k="technique">${scoreOpt(r.technique)}</select></div><div class="field"><label>Inzicht</label><select data-k="insight">${scoreOpt(r.insight)}</select></div><div class="field"><label>Gem.</label><input disabled value="${avg([r.effort,r.technique,r.insight])}"></div><div class="field"><label>Notities</label><textarea data-k="notes" rows="2" placeholder="Notitie toevoegen">${esc(r.notes)}</textarea></div></div>`;
   }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>';
 }
 async function collectTraining(){const date=$('trainingDate').value,d=getTraining(date);document.querySelectorAll('#trainingList .player-row').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderTraining();renderTrainingOverview();await postSync(trainingPayload(date,d),'trainingSyncStatus')}
@@ -277,7 +277,7 @@ function renderMatch(){
   const header=`<div class="match-row header"><div>Speler</div><div>Aanwezigheid</div><div>Rol</div><div>Positie</div><div>Min</div><div>Goals</div><div>Geel</div><div>Rood</div><div>Inzet</div><div>Techniek</div><div>Inzicht</div><div>Gem.</div><div>Wissel 1 tijd</div><div>In/Uit</div><div>Voor/door wie</div><div>Wissel 2 tijd</div><div>In/Uit</div><div>Voor/door wie</div><div>Notities</div></div>`;
   $('matchList').innerHTML=header+(players.length?players.map(p=>{
     const r=d[p];
-    return `<div class="match-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><select data-k="attendance">${opt(attendance,r.attendance)}</select><select data-k="role">${opt(roles,r.role)}</select><select data-k="position">${opt(['',...positions],r.position)}</select><input data-k="minutes" type="number" min="0" value="${r.minutes}"><input data-k="goals" type="number" min="0" value="${r.goals}"><input data-k="yellow" type="number" min="0" value="${r.yellow}"><input data-k="red" type="number" min="0" value="${r.red}"><select data-k="effort">${scoreOpt(r.effort)}</select><select data-k="technique">${scoreOpt(r.technique)}</select><select data-k="insight">${scoreOpt(r.insight)}</select><input disabled value="${avg([r.effort,r.technique,r.insight])}"><input data-k="sub1time" placeholder="min" value="${esc(r.sub1time)}"><select data-k="sub1type">${opt(['','In','Uit'],r.sub1type)}</select><input data-k="sub1for" value="${esc(r.sub1for)}"><input data-k="sub2time" placeholder="min" value="${esc(r.sub2time)}"><select data-k="sub2type">${opt(['','In','Uit'],r.sub2type)}</select><input data-k="sub2for" value="${esc(r.sub2for)}"><input data-k="notes" value="${esc(r.notes)}"></div>`;
+    return `<div class="match-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><select data-k="attendance">${opt(attendance,r.attendance)}</select><select data-k="role">${opt(roles,r.role)}</select><select data-k="position">${opt(['',...positions],r.position)}</select><input data-k="minutes" type="number" min="0" value="${r.minutes}"><input data-k="goals" type="number" min="0" value="${r.goals}"><input data-k="yellow" type="number" min="0" value="${r.yellow}"><input data-k="red" type="number" min="0" value="${r.red}"><select data-k="effort">${scoreOpt(r.effort)}</select><select data-k="technique">${scoreOpt(r.technique)}</select><select data-k="insight">${scoreOpt(r.insight)}</select><input disabled value="${avg([r.effort,r.technique,r.insight])}"><input data-k="sub1time" placeholder="min" value="${esc(r.sub1time)}"><select data-k="sub1type">${opt(['','In','Uit'],r.sub1type)}</select><input data-k="sub1for" value="${esc(r.sub1for)}"><input data-k="sub2time" placeholder="min" value="${esc(r.sub2time)}"><select data-k="sub2type">${opt(['','In','Uit'],r.sub2type)}</select><input data-k="sub2for" value="${esc(r.sub2for)}"><textarea data-k="notes" rows="2" placeholder="Notitie toevoegen">${esc(r.notes)}</textarea></div>`;
   }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>');
 }
 async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);state.matchMeta[date]={opponent:$('opponentName').value.trim()};document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderMatch();renderMatchOverview();await postSync(matchPayload(date,d),'matchSyncStatus')}
@@ -312,10 +312,10 @@ function renderTrainingOverview(){
     const day=state.training[openedTrainingDate]||{};
     title.textContent='Training '+fmtDate(openedTrainingDate)+' – specifiek overzicht';
     entry.style.display='';
-    table.innerHTML='<tr><th>Speler</th><th>Aanwezigheid</th><th>Score</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th></tr>'+
+    table.innerHTML='<tr><th>Speler</th><th>Aanwezigheid</th><th>Score</th><th>Inzet</th><th>Techniek</th><th>Inzicht</th><th>Notities</th></tr>'+
       sortNames(state.players).map(p=>{
         const r=day[p]||{};
-        return `<tr><td>${esc(p)}</td><td>${esc(r.attendance||'')}</td><td><b>${recordScore(r)}</b></td><td>${esc(r.effort||'')}</td><td>${esc(r.technique||'')}</td><td>${esc(r.insight||'')}</td></tr>`;
+        return `<tr><td>${esc(p)}</td><td>${esc(r.attendance||'')}</td><td><b>${recordScore(r)}</b></td><td>${esc(r.effort||'')}</td><td>${esc(r.technique||'')}</td><td>${esc(r.insight||'')}</td><td>${esc(r.notes||'')}</td></tr>`;
       }).join('');
     return;
   }
@@ -346,10 +346,10 @@ function renderMatchOverview(){
     const opponent=(state.matchMeta[openedMatchDate]&&state.matchMeta[openedMatchDate].opponent)||'';
     title.textContent='Wedstrijd '+fmtDate(openedMatchDate)+(opponent?' – '+opponent:'')+' – specifiek overzicht';
     entry.style.display='';
-    table.innerHTML='<tr><th>Speler</th><th>Aanwezigheid</th><th>Score</th><th>Rol</th><th>Positie</th><th>Minuten</th><th>Goals</th></tr>'+
+    table.innerHTML='<tr><th>Speler</th><th>Aanwezigheid</th><th>Score</th><th>Rol</th><th>Positie</th><th>Minuten</th><th>Goals</th><th>Notities</th></tr>'+
       sortNames(state.players).map(p=>{
         const r=day[p]||{};
-        return `<tr><td>${esc(p)}</td><td>${esc(r.attendance||'')}</td><td><b>${recordScore(r)}</b></td><td>${esc(r.role||'')}</td><td><b>${esc(r.position||'')}</b></td><td>${esc(r.minutes||'')}</td><td>${Number(r.goals||0)}</td></tr>`;
+        return `<tr><td>${esc(p)}</td><td>${esc(r.attendance||'')}</td><td><b>${recordScore(r)}</b></td><td>${esc(r.role||'')}</td><td><b>${esc(r.position||'')}</b></td><td>${esc(r.minutes||'')}</td><td>${Number(r.goals||0)}</td><td>${esc(r.notes||'')}</td></tr>`;
       }).join('');
     return;
   }
