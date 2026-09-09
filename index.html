@@ -184,7 +184,7 @@ table th{
         <div class="player-name-list" id="playerTable"></div>
       </div>
     </section>
-<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
+<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v24</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
 
 <div id="playerDetailModal" class="modal-backdrop" hidden>
@@ -358,26 +358,15 @@ function jsonpRequest(params,timeoutMs=12000){
   });
 }
 function mergeCentralData(data){
-  // Bewaar lokale, nog niet door Google Sheets bevestigde wijzigingen.
-  const localTraining=state.training||{};
-  const localMatches=state.matches||{};
-  const localMatchMeta=state.matchMeta||{};
-  const dirtyTraining=new Set(readDirtyDates(DIRTY_TRAINING_KEY));
-  const dirtyMatches=new Set(readDirtyDates(DIRTY_MATCH_KEY));
-
-  // Google Sheets is leidend voor bevestigde data.
+  // Google Sheets is de enige bron van waarheid bij openen/verversen.
+  // Hierdoor kunnen oude lokale waarden de correct opgeslagen Sheet-data niet meer overschrijven.
   state.training=(data && data.training && typeof data.training==='object') ? data.training : {};
   state.matches=(data && data.matches && typeof data.matches==='object') ? data.matches : {};
   state.matchMeta=(data && data.matchMeta && typeof data.matchMeta==='object') ? data.matchMeta : {};
 
-  // Onbevestigde lokale invoer mag nooit door een refresh verdwijnen.
-  dirtyTraining.forEach(date=>{
-    if(localTraining[date])state.training[date]=localTraining[date];
-  });
-  dirtyMatches.forEach(date=>{
-    if(localMatches[date])state.matches[date]=localMatches[date];
-    if(localMatchMeta[date])state.matchMeta[date]=localMatchMeta[date];
-  });
+  // Oude v23 'dirty' markeringen opruimen; die konden centrale waarden blijven afdekken.
+  localStorage.removeItem(DIRTY_TRAINING_KEY);
+  localStorage.removeItem(DIRTY_MATCH_KEY);
   if(data && Array.isArray(data.positions) && data.positions.length){
     positions=[...new Set(data.positions.map(String).map(x=>x.trim()).filter(Boolean))];
     localStorage.setItem('tt_positions',JSON.stringify(positions));
@@ -411,7 +400,7 @@ async function refreshFromSheets(showStatus=true){
     }
     if(!data||!data.success) throw new Error((data&&data.message)||'Onbekende fout');
     mergeCentralData(data);
-    if(showStatus) status.textContent='✓ Centrale gegevens bijgewerkt';
+    if(showStatus) status.textContent='✓ Google Sheets opnieuw ingelezen';
     return true;
   }catch(err){
     console.error('Ophalen Google Sheets mislukt',err);
@@ -447,7 +436,6 @@ async function collectTraining(){
   document.querySelectorAll('#trainingList .player-row').forEach(row=>
     row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value)
   );
-  setDirtyDate(DIRTY_TRAINING_KEY,date,true);
   save();
   renderTraining();
   renderTrainingOverview();
@@ -457,10 +445,7 @@ async function collectTraining(){
     'trainingSyncStatus',
     data=>trainingMatchesCentral(date,d,data)
   );
-  if(ok){
-    setDirtyDate(DIRTY_TRAINING_KEY,date,false);
-    save();
-  }
+  if(ok)save();
 }
 $('loadTraining').onclick=()=>{openedTrainingDate=$('trainingDate').value;renderTraining();renderTrainingOverview();};
 $('trainingTotalOverview').onclick=()=>{openedTrainingDate='';renderTrainingOverview();};
@@ -500,7 +485,6 @@ async function collectMatch(){
   document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>
     row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value)
   );
-  setDirtyDate(DIRTY_MATCH_KEY,date,true);
   save();
   renderMatch();
   renderMatchOverview();
@@ -510,10 +494,7 @@ async function collectMatch(){
     'matchSyncStatus',
     data=>matchMatchesCentral(date,d,data)
   );
-  if(ok){
-    setDirtyDate(DIRTY_MATCH_KEY,date,false);
-    save();
-  }
+  if(ok)save();
 }
 $('loadMatch').onclick=()=>{openedMatchDate=$('matchDate').value;renderMatch();renderMatchOverview();};
 $('matchTotalOverview').onclick=()=>{openedMatchDate='';renderMatchOverview();};
