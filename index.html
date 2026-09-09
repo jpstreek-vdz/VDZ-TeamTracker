@@ -97,6 +97,7 @@ table th{
 .birthday-list{margin:12px 0 0;padding-left:20px}
 .birthday-close{margin-top:16px;width:100%}
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <header><div class="brand"><img src="icon-192.png" alt="VDZ Arnhem"><div><h1>VDZ Arnhem TeamTracker</h1><p>Trainingen • wedstrijden • ontwikkeling • statistieken</p></div></div></header>
@@ -192,7 +193,7 @@ table th{
         <div class="player-name-list" id="playerTable"></div>
       </div>
     </section>
-<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v29</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
+<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v31</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
 
 <div id="playerDetailModal" class="modal-backdrop" hidden>
@@ -906,8 +907,114 @@ $('logoutBtn').onclick=async()=>{
   localStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_EXPIRY_KEY);
   location.replace(SYNC_URL+'?returnUrl='+encodeURIComponent(location.origin+location.pathname));
 };
-$('exportTraining').onclick=async()=>{$('dataStatus').textContent='Centrale trainingsdata ophalen…';try{await refreshFromSheets(false);}catch(e){console.warn(e)}const h=['Datum','Dag','Speler','Aanwezigheid','Inzet','Techniek','Inzicht','Gemiddelde','Notities'],rows=[];Object.entries(state.training).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulTraining(r))return;const dow=new Date(d+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long'});rows.push([d,dow,p,r.attendance,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.notes])}));download('VDZ_trainingen.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Trainingen geëxporteerd vanuit de laatst opgehaalde centrale data.'};
-$('exportMatches').onclick=async()=>{$('dataStatus').textContent='Centrale wedstrijddata ophalen…';try{await refreshFromSheets(false);}catch(e){console.warn(e)}const h=['Datum','Dag','Tegenstander','Speler','Aanwezigheid','Rol','Positie','Speelminuten','Goals','Gele kaarten','Rode kaarten','Inzet','Techniek','Inzicht','Gemiddelde','Wissel 1 tijd','Wissel 1','Voor wie / door wie','Wissel 2 tijd','Wissel 2','Voor wie / door wie','Notities'],rows=[];Object.entries(state.matches).sort().forEach(([d,day])=>state.players.forEach(p=>{const r=day[p];if(!meaningfulMatch(r))return;rows.push([d,'zaterdag',(state.matchMeta[d]&&state.matchMeta[d].opponent)||'',p,r.attendance,r.role,r.position,r.minutes,r.goals,r.yellow,r.red,r.effort,r.technique,r.insight,avg([r.effort,r.technique,r.insight]),r.sub1time,r.sub1type,r.sub1for,r.sub2time,r.sub2type,r.sub2for,r.notes])}));download('VDZ_wedstrijden.csv','\ufeff'+[h,...rows].map(r=>r.map(csvCell).join(';')).join('\n'));$('dataStatus').textContent='Wedstrijden geëxporteerd vanuit de laatst opgehaalde centrale data.'};
+
+
+function downloadExcelWithFilter(filename, table, sheetName){
+  if(typeof XLSX==='undefined') throw new Error('Excel-module kon niet worden geladen.');
+
+  const ws=XLSX.utils.aoa_to_sheet(table);
+
+  // AutoFilter over alle kolommen op rij 1.
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  ws['!autofilter']={
+    ref:XLSX.utils.encode_range({
+      s:{r:0,c:range.s.c},
+      e:{r:Math.max(0,range.e.r),c:range.e.c}
+    })
+  };
+
+  // Kolombreedtes automatisch op basis van inhoud, met redelijke grenzen.
+  const widths=[];
+  for(let c=range.s.c;c<=range.e.c;c++){
+    let maxLen=10;
+    for(let r=range.s.r;r<=range.e.r;r++){
+      const cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
+      if(cell && cell.v!=null) maxLen=Math.max(maxLen,String(cell.v).length);
+    }
+    widths.push({wch:Math.min(Math.max(maxLen+2,10),35)});
+  }
+  ws['!cols']=widths;
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,filename,{compression:true});
+}
+
+async function getCentralDataForExport(){
+  const token=localStorage.getItem('vdzToken')||'';
+  if(!token) throw new Error('Niet ingelogd');
+  const data=await jsonpRequest({action:'data',token:token,_:Date.now()},15000);
+  if(!data || data.ok===false) throw new Error((data&&data.error)||'Geen centrale data ontvangen');
+  return data;
+}
+
+function exportTrainingRowsFromCentral(data){
+  const h=['Datum','Dag','Speler','Aanwezigheid','Inzet','Techniek','Inzicht','Gemiddelde','Notities'];
+  const rows=[];
+  const training=data.training||data.trainings||{};
+  Object.entries(training).sort(([a],[b])=>a.localeCompare(b)).forEach(([d,day])=>{
+    Object.entries(day||{}).forEach(([player,r])=>{
+      r=r||{};
+      const hasMeaningful=String(r.attendance||'').trim()!=='' ||
+        [r.effort,r.technique,r.insight].some(v=>String(v??'').trim()!=='') ||
+        String(r.notes||'').trim()!=='';
+      if(!hasMeaningful) return;
+      const dow=new Date(d+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long'});
+      rows.push([d,dow,player,r.attendance||'',r.effort||'',r.technique||'',r.insight||'',
+        avg([r.effort,r.technique,r.insight]),r.notes||'']);
+    });
+  });
+  return [h,...rows];
+}
+
+function exportMatchRowsFromCentral(data){
+  const h=['Datum','Dag','Tegenstander','Speler','Aanwezigheid','Rol','Positie','Speelminuten','Goals','Gele kaarten','Rode kaarten','Inzet','Techniek','Inzicht','Gemiddelde','Wissel 1 tijd','Wissel 1','Voor wie / door wie','Wissel 2 tijd','Wissel 2','Voor wie / door wie','Notities'];
+  const rows=[];
+  const matches=data.matches||data.wedstrijden||{};
+  const meta=data.matchMeta||data.matchInfo||{};
+  Object.entries(matches).sort(([a],[b])=>a.localeCompare(b)).forEach(([d,day])=>{
+    Object.entries(day||{}).forEach(([player,r])=>{
+      r=r||{};
+      const hasMeaningful=[
+        r.attendance,r.role,r.position,r.minutes,r.goals,r.yellow,r.red,
+        r.effort,r.technique,r.insight,r.sub1time,r.sub1type,r.sub1for,
+        r.sub2time,r.sub2type,r.sub2for,r.notes
+      ].some(v=>String(v??'').trim()!=='');
+      if(!hasMeaningful) return;
+      const dow=new Date(d+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long'});
+      rows.push([d,dow,(meta[d]&&meta[d].opponent)||'',player,r.attendance||'',r.role||'',r.position||'',
+        r.minutes||'',r.goals||'',r.yellow||'',r.red||'',r.effort||'',r.technique||'',r.insight||'',
+        avg([r.effort,r.technique,r.insight]),r.sub1time||'',r.sub1type||'',r.sub1for||'',
+        r.sub2time||'',r.sub2type||'',r.sub2for||'',r.notes||'']);
+    });
+  });
+  return [h,...rows];
+}
+
+$('exportTraining').onclick=async()=>{
+  $('dataStatus').textContent='Rechtstreeks centrale trainingsdata ophalen…';
+  try{
+    const data=await getCentralDataForExport();
+    const table=exportTrainingRowsFromCentral(data);
+    downloadExcelWithFilter('VDZ_trainingen.xlsx',table,'Trainingen');
+    $('dataStatus').textContent='Trainingen Excel gedownload met filters in de bovenste rij.';
+  }catch(e){
+    console.error(e);
+    $('dataStatus').textContent='Excel-export mislukt: '+(e.message||e);
+  }
+};
+$('exportMatches').onclick=async()=>{
+  $('dataStatus').textContent='Rechtstreeks centrale wedstrijddata ophalen…';
+  try{
+    const data=await getCentralDataForExport();
+    const table=exportMatchRowsFromCentral(data);
+    downloadExcelWithFilter('VDZ_wedstrijden.xlsx',table,'Wedstrijden');
+    $('dataStatus').textContent='Wedstrijden Excel gedownload met filters in de bovenste rij.';
+  }catch(e){
+    console.error(e);
+    $('dataStatus').textContent='Excel-export mislukt: '+(e.message||e);
+  }
+};
 $('exportBackup').onclick=()=>download('VDZ_teamtracker_backup.json',JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2),'application/json');$('importBackup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.players)||!x.training||!x.matches)throw Error();state.players=sortNames(x.players);state.playerDetails=x.playerDetails||{};state.training=x.training;state.matches=x.matches;state.matchMeta=x.matchMeta||{};save();renderPlayers();renderTraining();renderMatch();renderTrainingOverview();renderMatchOverview();$('dataStatus').textContent='Backup succesvol geïmporteerd.'}catch{$('dataStatus').textContent='Ongeldig backupbestand.'}e.target.value=''};
 
 $('trainingPlayerFilter').addEventListener('input',renderTraining);
