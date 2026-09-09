@@ -189,11 +189,12 @@ table th{
       </div>
       <div class="card">
         <h3>Spelers</h3>
+<button id="addPlayerBtn" class="btn" type="button" style="margin:8px 0 12px">+ Nieuwe speler</button>
         <p class="small">Tik op een speler om gegevens te bekijken of aan te vullen.</p>
         <div class="player-name-list" id="playerTable"></div>
       </div>
     </section>
-<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v31</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
+<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v32</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
 
 <div id="playerDetailModal" class="modal-backdrop" hidden>
@@ -1001,6 +1002,7 @@ $('exportTraining').onclick=async()=>{
     const table=exportTrainingRowsFromCentral(data);
     downloadExcelWithFilter('VDZ_trainingen.xlsx',table,'Trainingen');
     $('dataStatus').textContent='Trainingen Excel gedownload met filters in de bovenste rij.';
+    showExcelDownloadedPopup('VDZ_trainingen.xlsx');
   }catch(e){
     console.error(e);
     $('dataStatus').textContent='Excel-export mislukt: '+(e.message||e);
@@ -1013,6 +1015,7 @@ $('exportMatches').onclick=async()=>{
     const table=exportMatchRowsFromCentral(data);
     downloadExcelWithFilter('VDZ_wedstrijden.xlsx',table,'Wedstrijden');
     $('dataStatus').textContent='Wedstrijden Excel gedownload met filters in de bovenste rij.';
+    showExcelDownloadedPopup('VDZ_wedstrijden.xlsx');
   }catch(e){
     console.error(e);
     $('dataStatus').textContent='Excel-export mislukt: '+(e.message||e);
@@ -1040,6 +1043,74 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape' && !$('playerDetailM
 if($('birthdayClose')) $('birthdayClose').onclick=closeBirthdayPopup;
 if($('birthdayOverlay')) $('birthdayOverlay').onclick=e=>{if(e.target===e.currentTarget)closeBirthdayPopup()};
 startAutomaticSync();
+
+
+function openNewPlayerModalV32(){
+  const ids=['detailFirstName','detailLastName','detailPhone','detailBirthDate','detailEmail'];
+  ids.forEach(id=>{ const el=$(id); if(el) el.value=''; });
+
+  // Bestaande selectie leegmaken, zodat Opslaan als nieuwe speler wordt behandeld.
+  window.currentPlayer='';
+  window.currentPlayerName='';
+  window.selectedPlayer='';
+  window.selectedPlayerName='';
+  window.editingPlayer='';
+  window.editingPlayerName='';
+
+  const title=$('playerDetailTitle');
+  if(title) title.textContent='Nieuwe speler';
+
+  const status=$('playerDetailStatus');
+  if(status) status.textContent='';
+
+  const modal=$('playerDetailModal');
+  if(modal){
+    modal.classList.add('show','open','active');
+    modal.setAttribute('aria-hidden','false');
+    modal.style.display='flex';
+  }
+
+  const first=$('detailFirstName');
+  if(first) setTimeout(()=>first.focus(),50);
+}
+
+document.addEventListener('click',e=>{
+  const btn=e.target && e.target.closest ? e.target.closest('#addPlayerBtn') : null;
+  if(btn){
+    e.preventDefault();
+    openNewPlayerModalV32();
+  }
+});
+
+
+function showExcelDownloadedPopup(filename){
+  const overlay=$('excelDownloadOverlay');
+  const msg=$('excelDownloadMessage');
+  if(!overlay||!msg) return;
+  msg.innerHTML='Het bestand <b>'+esc(filename)+'</b> is gedownload.<br><br>Open het via <b>Downloads</b> op je telefoon om het direct in Excel te bekijken.';
+  overlay.style.display='flex';
+  overlay.classList.add('show','open','active');
+  overlay.setAttribute('aria-hidden','false');
+}
+
+function closeExcelDownloadedPopup(){
+  const overlay=$('excelDownloadOverlay');
+  if(!overlay) return;
+  overlay.classList.remove('show','open','active');
+  overlay.setAttribute('aria-hidden','true');
+  overlay.style.display='none';
+}
+
+document.addEventListener('click',e=>{
+  if(e.target && e.target.id==='excelDownloadClose'){
+    e.preventDefault();
+    closeExcelDownloadedPopup();
+  }
+  if(e.target && e.target.id==='excelDownloadOverlay'){
+    closeExcelDownloadedPopup();
+  }
+});
+
 </script>
 
 <div class="birthday-overlay" id="birthdayOverlay" aria-hidden="true">
@@ -1049,4 +1120,13 @@ startAutomaticSync();
     <button class="btn birthday-close" id="birthdayClose" type="button">Sluiten</button>
   </div>
 </div>
+
+<div id="excelDownloadOverlay" class="modal-overlay" aria-hidden="true" style="display:none">
+  <div class="modal-card" style="max-width:420px">
+    <h3 style="margin-top:0">Excel-bestand gedownload</h3>
+    <div id="excelDownloadMessage" style="margin:10px 0 16px"></div>
+    <button id="excelDownloadClose" class="btn" type="button">OK</button>
+  </div>
+</div>
+
 </body></html>
