@@ -232,6 +232,104 @@ const opt=(arr,val)=>arr.map(x=>`<option ${String(x)===String(val)?'selected':''
 const meaningfulTraining=r=>r&&(r.attendance||r.effort||r.technique||r.insight||r.notes);
 const meaningfulMatch=r=>r&&(r.attendance||r.role||r.position||r.minutes||Number(r.goals)||Number(r.yellow)||Number(r.red)||r.effort||r.technique||r.insight||r.sub1time||r.sub1type||r.sub1for||r.sub2time||r.sub2type||r.sub2for||r.notes);
 function nlDay(date){const x=new Date(date+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long'});return x?x.charAt(0).toUpperCase()+x.slice(1):''}
+
+const DIRTY_TRAINING_KEY='tt_dirty_training_dates';
+const DIRTY_MATCH_KEY='tt_dirty_match_dates';
+
+function readDirtyDates(key){
+  try{
+    const v=JSON.parse(localStorage.getItem(key)||'[]');
+    return Array.isArray(v)?v.filter(Boolean):[];
+  }catch(e){return []}
+}
+function setDirtyDate(key,date,on){
+  const s=new Set(readDirtyDates(key));
+  if(on)s.add(date); else s.delete(date);
+  localStorage.setItem(key,JSON.stringify([...s]));
+}
+function isDirtyDate(key,date){
+  return readDirtyDates(key).includes(date);
+}
+function pause(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function txt(v){return String(v==null?'':v)}
+function num(v){const n=Number(v||0);return Number.isFinite(n)?n:0}
+
+function trainingMatchesCentral(date,localDay,data){
+  const central=(data&&data.training&&data.training[date])||{};
+  return state.players.every(player=>{
+    const a=localDay[player]||{};
+    const b=central[player]||{};
+    return txt(a.attendance)===txt(b.attendance)
+      && txt(a.effort)===txt(b.effort)
+      && txt(a.technique)===txt(b.technique)
+      && txt(a.insight)===txt(b.insight)
+      && txt(a.notes)===txt(b.notes);
+  });
+}
+function matchMatchesCentral(date,localDay,data){
+  const central=(data&&data.matches&&data.matches[date])||{};
+  const localOpponent=txt((state.matchMeta[date]||{}).opponent);
+  const centralOpponent=txt(((data&&data.matchMeta&&data.matchMeta[date])||{}).opponent);
+  if(localOpponent!==centralOpponent)return false;
+  return state.players.every(player=>{
+    const a=localDay[player]||{};
+    const b=central[player]||{};
+    return txt(a.attendance)===txt(b.attendance)
+      && txt(a.role)===txt(b.role)
+      && txt(a.position)===txt(b.position)
+      && txt(a.minutes)===txt(b.minutes)
+      && num(a.goals)===num(b.goals)
+      && num(a.yellow)===num(b.yellow)
+      && num(a.red)===num(b.red)
+      && txt(a.effort)===txt(b.effort)
+      && txt(a.technique)===txt(b.technique)
+      && txt(a.insight)===txt(b.insight)
+      && txt(a.sub1time)===txt(b.sub1time)
+      && txt(a.sub1type)===txt(b.sub1type)
+      && txt(a.sub1for)===txt(b.sub1for)
+      && txt(a.sub2time)===txt(b.sub2time)
+      && txt(a.sub2type)===txt(b.sub2type)
+      && txt(a.sub2for)===txt(b.sub2for)
+      && txt(a.notes)===txt(b.notes);
+  });
+}
+
+async function verifiedCentralSync(payload,statusId,verifyFn){
+  const status=$(statusId);
+  const token=localStorage.getItem(AUTH_TOKEN_KEY)||'';
+  payload.token=token;
+  status.textContent='Synchroniseren en controleren…';
+  try{
+    await fetch(SYNC_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(payload)
+    });
+
+    // Apps Script POST is no-cors: controleer daarom expliciet door de data terug te lezen.
+    await pause(900);
+    const data=await jsonpRequest({action:'data',token},15000);
+
+    if(data&&data.authRequired){
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_EXPIRY_KEY);
+      status.textContent='⚠ Opnieuw inloggen nodig; lokale invoer is bewaard';
+      location.replace(SYNC_URL+'?returnUrl='+encodeURIComponent(location.origin+location.pathname));
+      return false;
+    }
+    if(!data||!data.success)throw new Error((data&&data.message)||'Centrale controle mislukt');
+    if(!verifyFn(data))throw new Error('Google Sheets bevat nog niet dezelfde waarden');
+
+    status.textContent='✓ Opgeslagen én gecontroleerd in Google Sheets';
+    return true;
+  }catch(err){
+    console.error('Centrale synchronisatie niet bevestigd',err);
+    status.textContent='⚠ Lokaal bewaard; Google Sheets-opslag niet bevestigd. Klik nogmaals op Opslaan.';
+    return false;
+  }
+}
+
 async function postSync(payload,statusId){
   const status=$(statusId);status.textContent='Synchroniseren…';
   payload.token=localStorage.getItem(AUTH_TOKEN_KEY)||'';
@@ -260,24 +358,26 @@ function jsonpRequest(params,timeoutMs=12000){
   });
 }
 function mergeCentralData(data){
-  // Google Sheets is leidend: verwijder eerst ALLE lokale training- en wedstrijddata.
-  state.training={};
-  state.matches={};
-  state.matchMeta={};
-  localStorage.removeItem('tt_training');
-  localStorage.removeItem('tt_matches');
-  localStorage.removeItem('tt_match_meta');
+  // Bewaar lokale, nog niet door Google Sheets bevestigde wijzigingen.
+  const localTraining=state.training||{};
+  const localMatches=state.matches||{};
+  const localMatchMeta=state.matchMeta||{};
+  const dirtyTraining=new Set(readDirtyDates(DIRTY_TRAINING_KEY));
+  const dirtyMatches=new Set(readDirtyDates(DIRTY_MATCH_KEY));
 
-  // Laad daarna uitsluitend de data die nu werkelijk in Google Sheets staat.
-  if(data && data.training && typeof data.training==='object') {
-    state.training=data.training;
-  }
-  if(data && data.matches && typeof data.matches==='object') {
-    state.matches=data.matches;
-  }
-  if(data && data.matchMeta && typeof data.matchMeta==='object') {
-    state.matchMeta=data.matchMeta;
-  }
+  // Google Sheets is leidend voor bevestigde data.
+  state.training=(data && data.training && typeof data.training==='object') ? data.training : {};
+  state.matches=(data && data.matches && typeof data.matches==='object') ? data.matches : {};
+  state.matchMeta=(data && data.matchMeta && typeof data.matchMeta==='object') ? data.matchMeta : {};
+
+  // Onbevestigde lokale invoer mag nooit door een refresh verdwijnen.
+  dirtyTraining.forEach(date=>{
+    if(localTraining[date])state.training[date]=localTraining[date];
+  });
+  dirtyMatches.forEach(date=>{
+    if(localMatches[date])state.matches[date]=localMatches[date];
+    if(localMatchMeta[date])state.matchMeta[date]=localMatchMeta[date];
+  });
   if(data && Array.isArray(data.positions) && data.positions.length){
     positions=[...new Set(data.positions.map(String).map(x=>x.trim()).filter(Boolean))];
     localStorage.setItem('tt_positions',JSON.stringify(positions));
@@ -342,7 +442,26 @@ function renderTraining(){
     return `<div class="player-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><div class="field"><label>Aanwezigheid</label><select data-k="attendance">${opt(attendance,r.attendance)}</select></div><div class="field"><label>Inzet</label><select data-k="effort">${scoreOpt(r.effort)}</select></div><div class="field"><label>Techniek</label><select data-k="technique">${scoreOpt(r.technique)}</select></div><div class="field"><label>Inzicht</label><select data-k="insight">${scoreOpt(r.insight)}</select></div><div class="field"><label>Gem.</label><input disabled value="${avg([r.effort,r.technique,r.insight])}"></div><div class="field"><label>Notities</label><textarea data-k="notes" rows="2" placeholder="Notitie toevoegen">${esc(r.notes)}</textarea></div></div>`;
   }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>';
 }
-async function collectTraining(){const date=$('trainingDate').value,d=getTraining(date);document.querySelectorAll('#trainingList .player-row').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderTraining();renderTrainingOverview();await postSync(trainingPayload(date,d),'trainingSyncStatus')}
+async function collectTraining(){
+  const date=$('trainingDate').value,d=getTraining(date);
+  document.querySelectorAll('#trainingList .player-row').forEach(row=>
+    row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value)
+  );
+  setDirtyDate(DIRTY_TRAINING_KEY,date,true);
+  save();
+  renderTraining();
+  renderTrainingOverview();
+
+  const ok=await verifiedCentralSync(
+    trainingPayload(date,d),
+    'trainingSyncStatus',
+    data=>trainingMatchesCentral(date,d,data)
+  );
+  if(ok){
+    setDirtyDate(DIRTY_TRAINING_KEY,date,false);
+    save();
+  }
+}
 $('loadTraining').onclick=()=>{openedTrainingDate=$('trainingDate').value;renderTraining();renderTrainingOverview();};
 $('trainingTotalOverview').onclick=()=>{openedTrainingDate='';renderTrainingOverview();};
 $('saveTraining').onclick=collectTraining;
@@ -375,7 +494,27 @@ function renderMatch(){
     return `<div class="match-row" data-player="${esc(p)}"><div class="player-name">${esc(p)}</div><select data-k="attendance">${opt(attendance,r.attendance)}</select><select data-k="role">${opt(roles,r.role)}</select><select data-k="position">${opt(['',...positions],r.position)}</select><input data-k="minutes" type="number" min="0" value="${r.minutes}"><input data-k="goals" type="number" min="0" value="${r.goals}"><input data-k="yellow" type="number" min="0" value="${r.yellow}"><input data-k="red" type="number" min="0" value="${r.red}"><select data-k="effort">${scoreOpt(r.effort)}</select><select data-k="technique">${scoreOpt(r.technique)}</select><select data-k="insight">${scoreOpt(r.insight)}</select><input disabled value="${avg([r.effort,r.technique,r.insight])}"><input data-k="sub1time" placeholder="min" value="${esc(r.sub1time)}"><select data-k="sub1type">${opt(['','In','Uit'],r.sub1type)}</select><input data-k="sub1for" value="${esc(r.sub1for)}"><input data-k="sub2time" placeholder="min" value="${esc(r.sub2time)}"><select data-k="sub2type">${opt(['','In','Uit'],r.sub2type)}</select><input data-k="sub2for" value="${esc(r.sub2for)}"><textarea data-k="notes" rows="2" placeholder="Notitie toevoegen">${esc(r.notes)}</textarea></div>`;
   }).join(''):'<p class="small">Geen spelers voldoen aan de gekozen filters.</p>');
 }
-async function collectMatch(){const date=$('matchDate').value,d=getMatch(date);state.matchMeta[date]={opponent:$('opponentName').value.trim()};document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value));save();renderMatch();renderMatchOverview();await postSync(matchPayload(date,d),'matchSyncStatus')}
+async function collectMatch(){
+  const date=$('matchDate').value,d=getMatch(date);
+  state.matchMeta[date]={opponent:$('opponentName').value.trim()};
+  document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>
+    row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value)
+  );
+  setDirtyDate(DIRTY_MATCH_KEY,date,true);
+  save();
+  renderMatch();
+  renderMatchOverview();
+
+  const ok=await verifiedCentralSync(
+    matchPayload(date,d),
+    'matchSyncStatus',
+    data=>matchMatchesCentral(date,d,data)
+  );
+  if(ok){
+    setDirtyDate(DIRTY_MATCH_KEY,date,false);
+    save();
+  }
+}
 $('loadMatch').onclick=()=>{openedMatchDate=$('matchDate').value;renderMatch();renderMatchOverview();};
 $('matchTotalOverview').onclick=()=>{openedMatchDate='';renderMatchOverview();};
 $('saveMatch').onclick=collectMatch;
