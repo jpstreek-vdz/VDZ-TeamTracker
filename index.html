@@ -88,6 +88,14 @@ table th{
   table th{top:0}
 }
 
+
+/* Verjaardagspopup */
+.birthday-overlay{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.birthday-overlay.show{display:flex}
+.birthday-card{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:22px;box-shadow:0 16px 50px #0004}
+.birthday-card h3{margin-top:0}
+.birthday-list{margin:12px 0 0;padding-left:20px}
+.birthday-close{margin-top:16px;width:100%}
 </style>
 </head>
 <body>
@@ -184,7 +192,7 @@ table th{
         <div class="player-name-list" id="playerTable"></div>
       </div>
     </section>
-<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v26</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
+<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen CSV</button><button class="btn dark" id="exportMatches">Export wedstrijden CSV</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v28</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
 
 <div id="playerDetailModal" class="modal-backdrop" hidden>
@@ -322,6 +330,7 @@ async function verifiedCentralSync(payload,statusId,verifyFn){
     if(!verifyFn(data))throw new Error('Google Sheets bevat nog niet dezelfde waarden');
 
     status.textContent='✓ Opgeslagen én gecontroleerd in Google Sheets';
+    lastAutoSyncAt=Date.now();
     return true;
   }catch(err){
     console.error('Centrale synchronisatie niet bevestigd',err);
@@ -357,6 +366,98 @@ function jsonpRequest(params,timeoutMs=12000){
     document.head.appendChild(script);
   });
 }
+
+
+function parseBirthDate(value){
+  const s=String(value||'').trim();
+  if(!s)return null;
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return {month:Number(m[2]),day:Number(m[3])};
+  m=s.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+  if(m)return {month:Number(m[2]),day:Number(m[1])};
+  return null;
+}
+function daysUntilNextBirthday(birthDate){
+  const b=parseBirthDate(birthDate); if(!b)return null;
+  const now=new Date();
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let next=new Date(now.getFullYear(),b.month-1,b.day);
+  if(next<today) next=new Date(now.getFullYear()+1,b.month-1,b.day);
+  return Math.round((next-today)/86400000);
+}
+function upcomingBirthdaysWithinWeek(){
+  const result=[];
+  (state.players||[]).forEach(firstName=>{
+    const d=(state.playerDetails&&state.playerDetails[firstName])||{};
+    const delta=daysUntilNextBirthday(d.birthDate);
+    if(delta!==null && delta>=0 && delta<=7){
+      result.push({name:[firstName,d.lastName||''].filter(Boolean).join(' '),days:delta,birthDate:d.birthDate});
+    }
+  });
+  return result.sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name));
+}
+function showBirthdayPopupIfNeeded(){
+  const list=upcomingBirthdaysWithinWeek();
+  if(!list.length)return;
+  const todayKey=new Date().toISOString().slice(0,10);
+  const key='tt_birthday_popup_'+todayKey;
+  if(sessionStorage.getItem(key)==='1')return;
+  sessionStorage.setItem(key,'1');
+
+  const overlay=$('birthdayOverlay'),msg=$('birthdayMessage');
+  if(!overlay||!msg)return;
+  msg.innerHTML='<p>De volgende speler'+(list.length>1?'s zijn':' is')+' binnen 7 dagen jarig:</p><ul class="birthday-list">'+
+    list.map(x=>'<li><b>'+esc(x.name)+'</b> — '+(x.days===0?'vandaag':x.days===1?'morgen':'over '+x.days+' dagen')+'</li>').join('')+
+    '</ul>';
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+}
+function closeBirthdayPopup(){
+  const overlay=$('birthdayOverlay');
+  if(!overlay)return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+}
+let autoSyncBusy=false;
+let lastAutoSyncAt=0;
+const AUTO_SYNC_INTERVAL_MS=60000;
+
+async function autoRefreshFromSheets(reason){
+  if(autoSyncBusy || document.hidden) return;
+  const now=Date.now();
+
+  // Bij interval-calls niet vaker dan eenmaal per minuut.
+  if(reason==='interval' && now-lastAutoSyncAt<AUTO_SYNC_INTERVAL_MS-1000) return;
+
+  autoSyncBusy=true;
+  try{
+    await refreshFromSheets(false);
+    lastAutoSyncAt=Date.now();
+  }catch(err){
+    console.warn('Automatische synchronisatie overgeslagen:',err);
+  }finally{
+    autoSyncBusy=false;
+  }
+}
+
+function startAutomaticSync(){
+  // Iedere minuut zolang de app zichtbaar/open is.
+  setInterval(()=>autoRefreshFromSheets('interval'),AUTO_SYNC_INTERVAL_MS);
+
+  // Meteen opnieuw synchroniseren wanneer gebruiker terugkomt naar de app.
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) autoRefreshFromSheets('resume');
+  });
+
+  window.addEventListener('focus',()=>{
+    if(Date.now()-lastAutoSyncAt>10000) autoRefreshFromSheets('focus');
+  });
+
+  window.addEventListener('online',()=>{
+    autoRefreshFromSheets('online');
+  });
+}
+
 function mergeCentralData(data){
   // Google Sheets is de enige bron van waarheid bij openen/verversen.
   // Hierdoor kunnen oude lokale waarden de correct opgeslagen Sheet-data niet meer overschrijven.
@@ -400,6 +501,7 @@ async function refreshFromSheets(showStatus=true){
     }
     if(!data||!data.success) throw new Error((data&&data.message)||'Onbekende fout');
     mergeCentralData(data);
+    showBirthdayPopupIfNeeded();
     if(showStatus) status.textContent='✓ Google Sheets opnieuw ingelezen';
     return true;
   }catch(err){
@@ -816,5 +918,17 @@ $('closePlayerDetail').onclick=closePlayerDetail;
 $('playerDetailModal').onclick=e=>{if(e.target===$('playerDetailModal'))closePlayerDetail();};
 document.addEventListener('keydown',e=>{if(e.key==='Escape' && !$('playerDetailModal').hidden)closePlayerDetail();});
 
+
+if($('birthdayClose')) $('birthdayClose').onclick=closeBirthdayPopup;
+if($('birthdayOverlay')) $('birthdayOverlay').onclick=e=>{if(e.target===e.currentTarget)closeBirthdayPopup()};
+startAutomaticSync();
 </script>
+
+<div class="birthday-overlay" id="birthdayOverlay" aria-hidden="true">
+  <div class="birthday-card" role="dialog" aria-modal="true" aria-labelledby="birthdayTitle">
+    <h3 id="birthdayTitle">🎂 Verjaardag deze week</h3>
+    <div id="birthdayMessage"></div>
+    <button class="btn birthday-close" id="birthdayClose" type="button">Sluiten</button>
+  </div>
+</div>
 </body></html>
