@@ -941,10 +941,13 @@ function downloadExcelWithFilter(filename, table, sheetName){
 }
 
 async function getCentralDataForExport(){
-  const token=localStorage.getItem('vdzToken')||'';
+  // Gebruik exact dezelfde login-token als de rest van de app.
+  const token=localStorage.getItem(AUTH_TOKEN_KEY)||'';
   if(!token) throw new Error('Niet ingelogd');
   const data=await jsonpRequest({action:'data',token:token,_:Date.now()},15000);
-  if(!data || data.ok===false) throw new Error((data&&data.error)||'Geen centrale data ontvangen');
+  if(!data || data.authRequired || data.success===false || data.ok===false){
+    throw new Error((data&&(data.message||data.error))||'Geen centrale data ontvangen');
+  }
   return data;
 }
 
