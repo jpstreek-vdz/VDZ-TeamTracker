@@ -222,7 +222,13 @@ table th{
 
 <script>
 const SHEET_URL='https://docs.google.com/spreadsheets/d/18_hws3qwWV4nYwdA9toKofFFJFdncDeR/edit?usp=drive_link&ouid=106534731759217696757&rtpof=true&sd=true';
-const SYNC_URL='https://script.google.com/macros/s/AKfycbw-ORwcPafcw__plA0RUuy3f9UFL39OMe7dU2FdF_H2dlJSKop1VeFQz_aRiOyjE-zBcw/exec';
+const TEAM_URLS = {
+  "JO19-1": "https://script.google.com/macros/s/AKfycbw-ORwcPafCw__p1A0RUuy3f9UFL390Me7dU2FdF_H2d1JSKop1VeFQz_aRiOyjE-zBcw/exec",
+  "JO19-2": "https://script.google.com/macros/s/AKfycbyMghzYxzkGVPU2VKocNnVLSrA3-ktJNpOpOTUd7MzkSvR8h2PVz_kiVxXm20wvR7sW/exec"
+};
+
+const team = new URLSearchParams(location.search).get("team") || "JO19-1";
+const SYNC_URL = TEAM_URLS[team];
 const AUTH_TOKEN_KEY='vdz_auth_token', AUTH_EXPIRY_KEY='vdz_auth_expiry';
 (function authGate(){
   const q=new URLSearchParams(location.search);
