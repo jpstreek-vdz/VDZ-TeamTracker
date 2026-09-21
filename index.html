@@ -143,6 +143,8 @@ table th{
       <div class="toolbar">
         <div class="field"><label>Wedstrijddatum</label><input type="date" id="matchDate"></div>
         <div class="field"><label>Tegenstander</label><input type="text" id="opponentName" placeholder="Naam tegenstander"></div><div class="field"><label>Veo beelden</label><input type="url" id="matchVeoUrl" placeholder="https://app.veo.co/..."></div>
+        <div class="field"><label>Stand VDZ</label><input type="number" id="matchScoreVDZ" min="0" inputmode="numeric" placeholder="0"></div>
+        <div class="field"><label>Stand tegenstander</label><input type="number" id="matchScoreOpponent" min="0" inputmode="numeric" placeholder="0"></div>
         <button class="btn secondary" id="openMatchVeo" type="button" style="display:none">▶ Bekijk Veo-beelden</button>
         <button class="btn" id="loadMatch">Wedstrijd openen</button>
         <button class="btn secondary" id="matchTotalOverview" type="button">Totaaloverzicht</button>
@@ -152,7 +154,17 @@ table th{
       <div class="card">
         <h3 id="matchOverviewTitle">Totaaloverzicht wedstrijden</h3>
         <div class="scroll"><table id="matchOverviewTable"></table></div>
-      </div>
+      <div class="card" style="margin:12px 0">
+  <h3>Gespeelde wedstrijden</h3>
+  <div class="small">Alle wedstrijden die in de app zijn ingevoerd.</div>
+  <div class="scroll" style="margin-top:8px">
+    <table>
+      <thead><tr><th>Datum</th><th>Tegenstander</th><th>Stand</th><th>Veo</th></tr></thead>
+      <tbody id="playedMatchesBody"></tbody>
+    </table>
+  </div>
+</div>
+</div>
       <div id="matchEntryArea">
       <div class="filterbar">
         <div class="field"><label>Filter speler</label><input type="search" id="matchPlayerFilter" placeholder="Typ naam"></div>
@@ -195,7 +207,7 @@ table th{
         <div class="player-name-list" id="playerTable"></div>
       </div>
     </section>
-<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v33</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
+<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v34</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
 
 <div id="playerDetailModal" class="modal-backdrop" hidden>
@@ -522,7 +534,7 @@ async function refreshFromSheets(showStatus=true){
   }
 }
 function trainingPayload(date,day){return {type:'training',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',notes:r.notes||''}})}}
-function matchPayload(date,day){return {type:'match',opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',veoUrl:(state.matchMeta[date]&&state.matchMeta[date].veoUrl)||'',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',role:r.role||'',position:r.position||'',minutes:r.minutes||'',goals:r.goals||0,yellow:r.yellow||0,red:r.red||0,effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',sub1Time:r.sub1time||'',sub1Type:r.sub1type||'',sub1Person:r.sub1for||'',sub2Time:r.sub2time||'',sub2Type:r.sub2type||'',sub2Person:r.sub2for||'',notes:r.notes||''}})}}
+function matchPayload(date,day){return {type:'match',opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',veoUrl:(state.matchMeta[date]&&state.matchMeta[date].veoUrl)||'',scoreVDZ:(state.matchMeta[date]&&state.matchMeta[date].scoreVDZ)||'',scoreOpponent:(state.matchMeta[date]&&state.matchMeta[date].scoreOpponent)||'',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',role:r.role||'',position:r.position||'',minutes:r.minutes||'',goals:r.goals||0,yellow:r.yellow||0,red:r.red||0,effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',sub1Time:r.sub1time||'',sub1Type:r.sub1type||'',sub1Person:r.sub1for||'',sub2Time:r.sub2time||'',sub2Type:r.sub2type||'',sub2Person:r.sub2for||'',notes:r.notes||''}})}}
 function playersPayload(){return {type:'players',records:state.players.map(firstName=>{const d=state.playerDetails[firstName]||{};return {firstName,lastName:d.lastName||'',phone:d.phone||'',birthDate:d.birthDate||'',email:d.email||''}})}}
 async function syncPlayersToSheets(){return postSync(playersPayload(),'playerSyncStatus')}
 
@@ -594,7 +606,7 @@ function renderMatch(){
 }
 async function collectMatch(){
   const date=$('matchDate').value,d=getMatch(date);
-  state.matchMeta[date]={opponent:$('opponentName').value.trim(),veoUrl:$('matchVeoUrl').value.trim()};
+  state.matchMeta[date]={opponent:$('opponentName').value.trim(),veoUrl:$('matchVeoUrl').value.trim(),scoreVDZ:$('matchScoreVDZ').value,scoreOpponent:$('matchScoreOpponent').value};
   document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>
     row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value)
   );
@@ -614,7 +626,10 @@ $('loadMatch').onclick=()=>{
   renderMatch();renderMatchOverview();
   const m=state.matchMeta[openedMatchDate]||{};
   $('matchVeoUrl').value=m.veoUrl||'';
+  $('matchScoreVDZ').value=m.scoreVDZ??'';
+  $('matchScoreOpponent').value=m.scoreOpponent??'';
   $('openMatchVeo').style.display=m.veoUrl?'':'none';
+  renderPlayedMatchesV34();
 };
 $('matchTotalOverview').onclick=()=>{openedMatchDate='';renderMatchOverview();};
 $('saveMatch').onclick=collectMatch;
@@ -1133,6 +1148,55 @@ $('openMatchVeo').onclick=()=>{
   if(!u){alert('Geen geldige Veo-link ingevuld.');return;}
   window.open(u,'_blank','noopener,noreferrer');
 };
+
+
+
+function renderPlayedMatchesV34(){
+  const body=$('playedMatchesBody'); if(!body)return;
+  const dates=new Set([
+    ...Object.keys(state.matches||{}),
+    ...Object.keys(state.matchMeta||{})
+  ]);
+  const rows=[...dates].filter(d=>{
+    const m=(state.matchMeta&&state.matchMeta[d])||{};
+    const day=(state.matches&&state.matches[d])||{};
+    return m.opponent || Object.values(day).some(r=>meaningfulMatch(r));
+  }).sort().reverse();
+
+  body.innerHTML=rows.length?rows.map(d=>{
+    const m=(state.matchMeta&&state.matchMeta[d])||{};
+    const hasHome=String(m.scoreVDZ??'').trim()!=='';
+    const hasAway=String(m.scoreOpponent??'').trim()!=='';
+    const score=(hasHome&&hasAway)?esc(m.scoreVDZ)+' - '+esc(m.scoreOpponent):'—';
+    const veo=m.veoUrl?'<button class="btn secondary veo-overview-btn" data-date="'+esc(d)+'" type="button">▶ Veo</button>':'—';
+    return '<tr class="played-match-row" data-date="'+esc(d)+'"><td>'+esc(d)+'</td><td>'+esc(m.opponent||'')+'</td><td><b>'+score+'</b></td><td>'+veo+'</td></tr>';
+  }).join(''):'<tr><td colspan="4">Nog geen wedstrijden ingevoerd.</td></tr>';
+}
+document.addEventListener('click',e=>{
+  const vb=e.target.closest&&e.target.closest('.veo-overview-btn');
+  if(vb){
+    e.stopPropagation();
+    const d=vb.dataset.date,m=(state.matchMeta&&state.matchMeta[d])||{};
+    const u=normalizeVeoUrl(m.veoUrl||''); if(u)window.open(u,'_blank','noopener,noreferrer');
+    return;
+  }
+  const row=e.target.closest&&e.target.closest('.played-match-row');
+  if(row){
+    $('matchDate').value=row.dataset.date;
+    $('loadMatch').click();
+  }
+});
+['matchScoreVDZ','matchScoreOpponent'].forEach(id=>{
+  $(id).addEventListener('input',()=>{
+    const d=openedMatchDate||$('matchDate').value;
+    if(!d)return;
+    if(!state.matchMeta[d])state.matchMeta[d]={};
+    state.matchMeta[d].scoreVDZ=$('matchScoreVDZ').value;
+    state.matchMeta[d].scoreOpponent=$('matchScoreOpponent').value;
+    save(); renderPlayedMatchesV34();
+  });
+});
+setTimeout(renderPlayedMatchesV34,0);
 
 </script>
 
