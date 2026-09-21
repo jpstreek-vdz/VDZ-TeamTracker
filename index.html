@@ -142,7 +142,8 @@ table th{
 <section id="matches" class="view">
       <div class="toolbar">
         <div class="field"><label>Wedstrijddatum</label><input type="date" id="matchDate"></div>
-        <div class="field"><label>Tegenstander</label><input type="text" id="opponentName" placeholder="Naam tegenstander"></div>
+        <div class="field"><label>Tegenstander</label><input type="text" id="opponentName" placeholder="Naam tegenstander"></div><div class="field"><label>Veo beelden</label><input type="url" id="matchVeoUrl" placeholder="https://app.veo.co/..."></div>
+        <button class="btn secondary" id="openMatchVeo" type="button" style="display:none">▶ Bekijk Veo-beelden</button>
         <button class="btn" id="loadMatch">Wedstrijd openen</button>
         <button class="btn secondary" id="matchTotalOverview" type="button">Totaaloverzicht</button>
         <button class="btn secondary" id="saveMatch">Opslaan + synchroniseren</button>
@@ -194,7 +195,7 @@ table th{
         <div class="player-name-list" id="playerTable"></div>
       </div>
     </section>
-<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v32</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
+<section id="data" class="view"><div class="card"><h3>Google Drive / Excel</h3><div class="notice"><b>Google Sheets synchronisatie actief.</b><br>Bij Opslaan worden trainingen, wedstrijden en spelersgegevens lokaal bewaard én naar het centrale Google Spreadsheet gestuurd. Bij openen haalt de app ook de centrale gegevens op, inclusief het tabblad Spelers, zodat alle trainers hetzelfde overzicht zien. CSV-export en backup blijven beschikbaar.</div><div class="actions"><button class="btn" id="openSheet">Open Google Sheet</button><button class="btn secondary" id="refreshSheets">Ververs vanuit Google Sheets</button><button class="btn danger" id="logoutBtn">Uitloggen</button><button class="btn dark" id="exportTraining">Export trainingen Excel</button><button class="btn dark" id="exportMatches">Export wedstrijden Excel</button><button class="btn secondary" id="exportBackup">Backup appdata</button><label class="btn secondary" style="display:inline-block">Backup importeren<input type="file" id="importBackup" accept="application/json" style="display:none"></label></div><div class="status" id="dataStatus"></div><div class="small" style="margin-top:6px">App-versie: v33</div></div><div class="card"><h3>Installeren als app</h3><p><b>iPhone:</b> open via Safari → Deel → Zet op beginscherm.</p><p><b>Android:</b> open via Chrome → menu → App installeren / Toevoegen aan startscherm.</p><p class="small">Voor PWA-installatie moet de map via HTTPS gehost worden; Google Drive zelf host losse HTML-bestanden niet als website.</p></div></section>
 </main>
 
 <div id="playerDetailModal" class="modal-backdrop" hidden>
@@ -521,7 +522,7 @@ async function refreshFromSheets(showStatus=true){
   }
 }
 function trainingPayload(date,day){return {type:'training',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',notes:r.notes||''}})}}
-function matchPayload(date,day){return {type:'match',opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',role:r.role||'',position:r.position||'',minutes:r.minutes||'',goals:r.goals||0,yellow:r.yellow||0,red:r.red||0,effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',sub1Time:r.sub1time||'',sub1Type:r.sub1type||'',sub1Person:r.sub1for||'',sub2Time:r.sub2time||'',sub2Type:r.sub2type||'',sub2Person:r.sub2for||'',notes:r.notes||''}})}}
+function matchPayload(date,day){return {type:'match',opponent:(state.matchMeta[date]&&state.matchMeta[date].opponent)||'',veoUrl:(state.matchMeta[date]&&state.matchMeta[date].veoUrl)||'',records:state.players.map(player=>{const r=day[player]||{};return {date,day:nlDay(date),player,attendance:r.attendance||'',role:r.role||'',position:r.position||'',minutes:r.minutes||'',goals:r.goals||0,yellow:r.yellow||0,red:r.red||0,effort:r.effort||'',technique:r.technique||'',insight:r.insight||'',sub1Time:r.sub1time||'',sub1Type:r.sub1type||'',sub1Person:r.sub1for||'',sub2Time:r.sub2time||'',sub2Type:r.sub2type||'',sub2Person:r.sub2for||'',notes:r.notes||''}})}}
 function playersPayload(){return {type:'players',records:state.players.map(firstName=>{const d=state.playerDetails[firstName]||{};return {firstName,lastName:d.lastName||'',phone:d.phone||'',birthDate:d.birthDate||'',email:d.email||''}})}}
 async function syncPlayersToSheets(){return postSync(playersPayload(),'playerSyncStatus')}
 
@@ -593,7 +594,7 @@ function renderMatch(){
 }
 async function collectMatch(){
   const date=$('matchDate').value,d=getMatch(date);
-  state.matchMeta[date]={opponent:$('opponentName').value.trim()};
+  state.matchMeta[date]={opponent:$('opponentName').value.trim(),veoUrl:$('matchVeoUrl').value.trim()};
   document.querySelectorAll('#matchList .match-row[data-player]').forEach(row=>
     row.querySelectorAll('[data-k]').forEach(el=>d[row.dataset.player][el.dataset.k]=el.value)
   );
@@ -608,7 +609,13 @@ async function collectMatch(){
   );
   if(ok)save();
 }
-$('loadMatch').onclick=()=>{openedMatchDate=$('matchDate').value;renderMatch();renderMatchOverview();};
+$('loadMatch').onclick=()=>{
+  openedMatchDate=$('matchDate').value;
+  renderMatch();renderMatchOverview();
+  const m=state.matchMeta[openedMatchDate]||{};
+  $('matchVeoUrl').value=m.veoUrl||'';
+  $('openMatchVeo').style.display=m.veoUrl?'':'none';
+};
 $('matchTotalOverview').onclick=()=>{openedMatchDate='';renderMatchOverview();};
 $('saveMatch').onclick=collectMatch;
 
@@ -1110,6 +1117,22 @@ document.addEventListener('click',e=>{
     closeExcelDownloadedPopup();
   }
 });
+
+
+
+function normalizeVeoUrl(value){
+  let u=String(value||'').trim(); if(!u)return '';
+  if(!/^https?:\/\//i.test(u))u='https://'+u;
+  try{const x=new URL(u);return (x.protocol==='http:'||x.protocol==='https:')?x.href:''}catch(e){return ''}
+}
+$('matchVeoUrl').addEventListener('input',()=>{
+  $('openMatchVeo').style.display=$('matchVeoUrl').value.trim()?'':'none';
+});
+$('openMatchVeo').onclick=()=>{
+  const u=normalizeVeoUrl($('matchVeoUrl').value);
+  if(!u){alert('Geen geldige Veo-link ingevuld.');return;}
+  window.open(u,'_blank','noopener,noreferrer');
+};
 
 </script>
 
