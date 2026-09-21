@@ -230,6 +230,7 @@ const TEAM_URLS = {
 const team = new URLSearchParams(location.search).get("team") || "JO19-1";
 const SYNC_URL = TEAM_URLS[team];
 const AUTH_TOKEN_KEY='vdz_auth_token', AUTH_EXPIRY_KEY='vdz_auth_expiry';
+  const ADMIN_TOKEN_KEY='vdz_admin_token';
 (function authGate(){
   const q=new URLSearchParams(location.search);
   const incoming=q.get('vdz_token');
